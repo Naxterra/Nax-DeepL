@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     // ── Auto-refresh and offline-retry timers ──
     readonly DispatcherTimer  _refresh;
     readonly DispatcherTimer  _retry;
+    static readonly TimeSpan  FirstRetryDelay = TimeSpan.FromSeconds(5);
 
     public MainWindow()
     {
@@ -38,13 +39,15 @@ public partial class MainWindow : Window
         _refresh.Tick += async (_, _) => await RefreshTokenAsync();
         _refresh.Start();
 
-        // While DeepL is unreachable, try again every few seconds. A network change also
-        // triggers a retry right away, see OnNetworkReset.
-        _retry = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+        // While DeepL is unreachable, try again with a pause that doubles up to five minutes.
+        // A request that timed out may still count against the quota, so retrying every few
+        // seconds for hours could use it up. A network change or an edit retries right away,
+        // see OnNetworkReset and SrcBox_Changed.
+        _retry = new DispatcherTimer { Interval = FirstRetryDelay };
         _retry.Tick += (_, _) =>
         {
-            _retry.Interval = TimeSpan.FromSeconds(5);
             if (!_failed) { _retry.Stop(); return; }
+            _retry.Interval = RetryBackoff.Next(_retry.Interval);
             _ = TranslateAsync();
         };
         Net.Shared.Reset += () => Dispatcher.BeginInvoke(OnNetworkReset);
@@ -170,6 +173,12 @@ public partial class MainWindow : Window
     {
         var src = SrcBox.Text.Trim();
         if (src.Length < 3) return;
+        if (src.Length > DeepLApi.MaxChars)
+        {
+            _cts.Cancel();
+            SetStatus(Loc.StatusTooLong(src.Length));
+            return;
+        }
         if (src == _lastSrc && !_failed) return;
         _lastSrc = src;
 
@@ -215,6 +224,7 @@ public partial class MainWindow : Window
             _detected   = result.Detected;
             _failed = false;
             _retry.Stop();
+            _retry.Interval = FirstRetryDelay;
             SetStatus(Loc.StatusTranslated(result.Detected));
         }
         catch (OperationCanceledException) { }
@@ -249,8 +259,9 @@ public partial class MainWindow : Window
 
     void SrcBox_Changed(object s, TextChangedEventArgs e)
     {
-        CharCount.Text = $"{SrcBox.Text.Length} / 5000";
-        if (SrcBox.Text.Length > 5000) return;
+        CharCount.Text = $"{SrcBox.Text.Length} / {DeepLApi.MaxChars}";
+        // Text over the limit still goes through the debounce, so TranslateAsync can say why
+        // nothing is translated.
         _debounce.Stop();
         _debounce.Start();
     }
@@ -434,7 +445,8 @@ public partial class MainWindow : Window
         Activate();
         SrcBox.Text = text;
         SrcBox.CaretIndex = text.Length;
-        _lastSrc = "";
+        // _lastSrc is kept, so the same clipboard is not sent again when it is already
+        // translated. A failed attempt is still retried, because TranslateAsync checks _failed.
         _debounce.Stop();
         _ = TranslateAsync();
     }

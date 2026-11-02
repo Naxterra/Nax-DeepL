@@ -72,6 +72,9 @@ public static class DeepLApi
         ["Türkisch"]       = "tr",
     };
 
+    /// <summary>The most characters one translation may send. Longer texts are never sent.</summary>
+    public const int MaxChars = 5000;
+
     public static async Task<(string Text, string? DetectedLang)> TranslateAsync(
         string text,
         string tgtLang,
@@ -81,6 +84,11 @@ public static class DeepLApi
         CancellationToken ct    = default,
         ResilientHttp? http     = null)
     {
+        // Every character counts against the account's quota, so a long clipboard must never
+        // go out by accident. The window checks this too and explains it to the user.
+        if (text.Length > MaxChars)
+            throw new ArgumentException($"Text has {text.Length} characters, the limit is {MaxChars}.", nameof(text));
+
         var body = new TranslationRequest
         {
             Text          = [text],
