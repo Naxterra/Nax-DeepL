@@ -140,6 +140,44 @@ public class NetworkTests
     }
 
     [Fact]
+    public async Task translate_refused_because_character_quota_used_up_reports_limit_reached()
+    {
+        using var http = Http((_, _, _) =>
+            Task.FromResult(FakeHandler.Json((HttpStatusCode)456, """{"status":456,"traceId":"00-abc-01"}""")));
+
+        var ex = await Assert.ThrowsAsync<LimitReachedException>(() =>
+            DeepLApi.TranslateAsync("Hallo Welt", "en-US", accessToken: "tok", http: http));
+        Assert.Equal(456, ex.Status);
+    }
+
+    [Fact]
+    public async Task translate_refused_for_too_many_requests_reports_limit_reached_after_retries()
+    {
+        var calls = 0;
+        using var http = Http((_, _, _) =>
+        {
+            Interlocked.Increment(ref calls);
+            return Task.FromResult(FakeHandler.Json(HttpStatusCode.TooManyRequests, "{}"));
+        });
+
+        var ex = await Assert.ThrowsAsync<LimitReachedException>(() =>
+            DeepLApi.TranslateAsync("Hallo Welt", "en-US", accessToken: "tok", http: http));
+        Assert.Equal(429, ex.Status);
+        Assert.Equal(1 + FastRetries.Length, calls);
+    }
+
+    [Fact]
+    public async Task translate_server_error_shows_status_code_without_raw_response()
+    {
+        using var http = Http((_, _, _) =>
+            Task.FromResult(FakeHandler.Json(HttpStatusCode.BadRequest, """{"status":400,"traceId":"00-abc-01"}""")));
+
+        var ex = await Assert.ThrowsAsync<Exception>(() =>
+            DeepLApi.TranslateAsync("Hallo Welt", "en-US", accessToken: "tok", http: http));
+        Assert.Equal("HTTP 400", ex.Message);
+    }
+
+    [Fact]
     public async Task translate_sends_bearer_token_and_returns_translated_text()
     {
         string? auth = null;

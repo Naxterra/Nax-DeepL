@@ -35,6 +35,12 @@ public static class Loc
     public static string StatusCopied    => En ? "Copied."                                 : "Kopiert.";
     public static string StatusClipboardBusy => En ? "The clipboard is in use by another program. Please try again."
                                                    : "Die Zwischenablage wird von einem anderen Programm benutzt. Bitte noch einmal versuchen.";
+    public static string NoTranslation   => En ? "DeepL sent no translation."              : "Keine Übersetzung erhalten.";
+    public static string StatusLimitReached => En ? "DeepL is not accepting more translations right now because a usage limit was reached. Please try again later."
+                                                  : "DeepL nimmt gerade keine weiteren Übersetzungen an, weil ein Nutzungslimit erreicht ist. Bitte später noch einmal versuchen.";
+    public static string StatusTooLong(int length) =>
+        En ? $"The text has {length} characters and was not sent to DeepL. Please shorten it to {DeepLApi.MaxChars}."
+           : $"Der Text hat {length} Zeichen und wurde nicht an DeepL geschickt. Bitte auf {DeepLApi.MaxChars} kürzen.";
     public static string StatusTranslating => En ? "Translating…"                          : "Übersetze…";
     public static string StatusError     => En ? "Error: "                                 : "Fehler: ";
     public static string StatusOffline   => En ? "No connection to DeepL. Retrying automatically…"

@@ -119,6 +119,16 @@ public sealed class ResilientHttp : IDisposable
     public void Dispose() => _client.Dispose();
 }
 
+/// <summary>How long the window waits before its next automatic retry while DeepL is unreachable.</summary>
+public static class RetryBackoff
+{
+    public static readonly TimeSpan Max = TimeSpan.FromMinutes(5);
+
+    /// <summary>Doubles the pause, but never beyond <see cref="Max"/>.</summary>
+    public static TimeSpan Next(TimeSpan current) =>
+        current * 2 < Max ? current * 2 : Max;
+}
+
 /// <summary>The one shared <see cref="ResilientHttp"/> instance, wired to Windows network events.</summary>
 public static class Net
 {

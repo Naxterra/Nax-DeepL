@@ -10,6 +10,15 @@ namespace NaxDeepL;
 /// <summary>DeepL rejected the access token, so it has to be renewed before trying again.</summary>
 public sealed class AuthExpiredException() : Exception("DeepL rejected the login token.");
 
+/// <summary>
+/// DeepL refuses more translations for now because a usage limit was reached: 456 means the
+/// character quota, 429 means too many requests. Retrying at once would only use up more of it.
+/// </summary>
+public sealed class LimitReachedException(int status) : Exception($"DeepL usage limit reached (HTTP {status}).")
+{
+    public int Status { get; } = status;
+}
+
 public static class DeepLApi
 {
     const string ProEndpoint = "https://oneshot-pro.www.deepl.com/v1/translate";
@@ -63,6 +72,9 @@ public static class DeepLApi
         ["Türkisch"]       = "tr",
     };
 
+    /// <summary>The most characters one translation may send. Longer texts are never sent.</summary>
+    public const int MaxChars = 5000;
+
     public static async Task<(string Text, string? DetectedLang)> TranslateAsync(
         string text,
         string tgtLang,
@@ -72,6 +84,11 @@ public static class DeepLApi
         CancellationToken ct    = default,
         ResilientHttp? http     = null)
     {
+        // Every character counts against the account's quota, so a long clipboard must never
+        // go out by accident. The window checks this too and explains it to the user.
+        if (text.Length > MaxChars)
+            throw new ArgumentException($"Text has {text.Length} characters, the limit is {MaxChars}.", nameof(text));
+
         var body = new TranslationRequest
         {
             Text          = [text],
@@ -101,12 +118,15 @@ public static class DeepLApi
 
         if (resp.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
             throw new AuthExpiredException();
+        if ((int)resp.StatusCode is 456 or 429)
+            throw new LimitReachedException((int)resp.StatusCode);
+        // The body is JSON with a trace id that means nothing to the user, so only the code is shown.
         if (!resp.IsSuccessStatusCode)
-            throw new Exception($"HTTP {(int)resp.StatusCode}: {raw[..Math.Min(200, raw.Length)]}");
+            throw new Exception($"HTTP {(int)resp.StatusCode}");
 
         var result = JsonSerializer.Deserialize<TranslationResponse>(raw);
         var first  = result?.Translations.FirstOrDefault()
-                     ?? throw new Exception("Keine Übersetzung erhalten.");
+                     ?? throw new Exception(Loc.NoTranslation);
 
         return (first.Text, first.DetectedSourceLanguage);
     }
