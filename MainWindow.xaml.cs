@@ -225,6 +225,15 @@ public partial class MainWindow : Window
             if (!_retry.IsEnabled) _retry.Start();
             SetStatus(Loc.StatusOffline);
         }
+        catch (LimitReachedException)
+        {
+            if (ct.IsCancellationRequested) return;
+            // No automatic retry, because every attempt counts against the limit. The next edit
+            // or Ctrl+Enter tries again.
+            _failed  = false;
+            _lastSrc = "";
+            SetStatus(Loc.StatusLimitReached);
+        }
         catch (Exception ex)
         {
             if (ct.IsCancellationRequested) return;
