@@ -78,11 +78,6 @@ public class Config
     }
 
     /// <summary>
-    /// Moves the settings folder of an older version to the current name. Settings that already
-    /// exist under the current name are never replaced. If the move fails, the old folder stays
-    /// untouched and the app starts with default settings.
-    /// </summary>
-    /// <summary>
     /// Moves the first of the given old folders that exists, newest name first. A folder is never
     /// moved onto one that exists, so after the first move the older folders are left alone.
     /// </summary>
@@ -91,6 +86,11 @@ public class Config
         foreach (var legacy in legacyDirs) MoveLegacyFolder(legacy, newDir);
     }
 
+    /// <summary>
+    /// Moves the settings folder of an older version to the current name. Settings that already
+    /// exist under the current name are never replaced. If the move fails, the old folder stays
+    /// untouched and the app starts with default settings.
+    /// </summary>
     internal static void MoveLegacyFolder(string legacyDir, string newDir)
     {
         try

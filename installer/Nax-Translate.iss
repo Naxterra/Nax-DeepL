@@ -26,8 +26,9 @@ VersionInfoVersion={#AppVersion}
 ; Installs for the current user only, so no administrator rights are needed.
 PrivilegesRequired=lowest
 DefaultDirName={autopf}\{#AppName}
-; An update from Nax-DeepL moves to the folder of the new name instead of reusing the old one.
-UsePreviousAppDir=no
+; Updates keep the folder of the installed version, so a folder the user chose stays in use. Only
+; a folder named after the old name moves to one named Nax-Translate, see InitializeWizard.
+UsePreviousAppDir=yes
 DisableProgramGroupPage=yes
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
@@ -77,6 +78,9 @@ Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags
 Filename: "{app}\{#AppExe}"; Parameters: "--uninstall-cleanup"; Flags: runhidden waituntilterminated; RunOnceId: "RegistryCleanup"
 
 [Code]
+const
+  RunKey = 'Software\Microsoft\Windows\CurrentVersion\Run';
+
 var
   OldInstallDir: String;
 
@@ -99,18 +103,63 @@ begin
     (SuppressibleMsgBox(CustomMessage('RuntimeMissing'), mbConfirmation, MB_YESNO, IDNO) = IDYES);
 end;
 
-procedure CurStepChanged(CurStep: TSetupStep);
+procedure InitializeWizard;
+var
+  Prev: String;
+begin
+  // The installed version's folder is kept (UsePreviousAppDir). Only when that folder carries the
+  // old name, as the default folder of Nax-DeepL does, the update goes to a folder of the new name
+  // next to it. A folder given with /DIR= on the command line is always respected.
+  Prev := RemoveBackslash(OldInstallDir);
+  if (Prev <> '') and (ExpandConstant('{param:DIR}') = '') and
+     (CompareText(ExtractFileName(Prev), '{#OldName}') = 0) then
+    WizardForm.DirEdit.Text := AddBackslash(ExtractFileDir(Prev)) + '{#AppName}';
+end;
+
+procedure MoveStartEntry;
+var
+  Old: String;
+begin
+  // A "Start with Windows" entry of the old name points at Nax-DeepL.exe, which is removed below.
+  // It is moved here, because after a silent update nobody starts the new app to move it.
+  if RegQueryStringValue(HKCU, RunKey, '{#OldName}', Old) then
+  begin
+    RegWriteStringValue(HKCU, RunKey, '{#AppName}', '"' + ExpandConstant('{app}\{#AppExe}') + '"');
+    RegDeleteValue(HKCU, RunKey, '{#OldName}');
+  end;
+end;
+
+procedure RemoveOldProgramFiles;
 var
   OldDir: String;
 begin
-  // After an update from Nax-DeepL the old program folder is no longer used. It is removed only
-  // when it is a different folder and still holds the old program file, so nothing else is touched.
+  // Only the files that Nax-DeepL installed are deleted, by name, never anything else that may be
+  // in the folder. The folder itself is removed only when the update moved to another folder and
+  // nothing else is left in it.
+  OldDir := RemoveBackslash(OldInstallDir);
+  if OldDir = '' then
+    exit;
+  DeleteFile(OldDir + '\{#OldName}.exe');
+  DeleteFile(OldDir + '\{#OldName}.dll');
+  DeleteFile(OldDir + '\{#OldName}.deps.json');
+  DeleteFile(OldDir + '\{#OldName}.runtimeconfig.json');
+  DeleteFile(OldDir + '\{#OldName}.pdb');
+  if CompareText(OldDir, RemoveBackslash(ExpandConstant('{app}'))) <> 0 then
+  begin
+    // The new uninstaller lives in the new folder, so the old one is no longer used.
+    DeleteFile(OldDir + '\unins000.exe');
+    DeleteFile(OldDir + '\unins000.dat');
+    DeleteFile(OldDir + '\unins000.msg');
+    RemoveDir(OldDir);
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
   if CurStep = ssPostInstall then
   begin
-    OldDir := RemoveBackslash(OldInstallDir);
-    if (OldDir <> '') and (CompareText(OldDir, RemoveBackslash(ExpandConstant('{app}'))) <> 0) and
-       FileExists(AddBackslash(OldDir) + '{#OldName}.exe') then
-      DelTree(OldDir, True, True, True);
+    MoveStartEntry;
+    RemoveOldProgramFiles;
   end;
 end;
 
