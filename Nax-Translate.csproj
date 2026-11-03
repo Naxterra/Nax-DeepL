@@ -21,6 +21,10 @@
     <Compile Remove="tests\**" />
     <None Remove="tests\**" />
     <Page Remove="tests\**" />
+    <!-- The icon tool is a separate program and must not be compiled into the app either. -->
+    <Compile Remove="tools\**" />
+    <None Remove="tools\**" />
+    <Page Remove="tools\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -29,6 +33,7 @@
 
   <ItemGroup>
     <Resource Include="icon.ico" />
+    <Resource Include="logo.png" />
   </ItemGroup>
 
 </Project>

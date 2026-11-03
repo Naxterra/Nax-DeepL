@@ -71,6 +71,8 @@ dotnet publish Nax-Translate.csproj -c Release -r win-x64 --no-self-contained -o
 
 Run the tests with `dotnet test`. Building requires the .NET 11 SDK.
 
+The app icon is drawn by a small tool. To change it, edit `tools\IconMaker\Program.cs` and run `dotnet run --project tools/IconMaker -- icon.ico logo.png` from the repository root, which writes the icon in all sizes from 16 to 256 pixels and the logo for the window's header.
+
 To build the installer, run `installer\build.ps1` in PowerShell. It needs Inno Setup 7 (`winget install JRSoftware.InnoSetup.7`) and writes the setup file to `artifacts\installer`.
 
 ## Disclaimer

@@ -136,8 +136,10 @@ public partial class App : Application
     {
         var uri  = new Uri("pack://application:,,,/icon.ico");
         var info = Application.GetResourceStream(uri);
+        // The tray shows small icons, so pick the size Windows uses for them at the current display
+        // scale (16, 20 or 24 pixels) instead of scaling down a large one.
         return info is not null
-            ? new System.Drawing.Icon(info.Stream)
+            ? new System.Drawing.Icon(info.Stream, Forms.SystemInformation.SmallIconSize)
             : System.Drawing.SystemIcons.Application;
     }
 }

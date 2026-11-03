@@ -27,17 +27,9 @@
 
             <!-- App icon, name and Pro badge -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                <Border Width="30" Height="30" CornerRadius="8" Margin="0,0,10,0">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                            <GradientStop Color="#60CDFF" Offset="0"/>
-                            <GradientStop Color="#3A7BFF" Offset="1"/>
-                        </LinearGradientBrush>
-                    </Border.Background>
-                    <TextBlock Text="&#xF2B7;" FontFamily="{StaticResource IconFont}" FontSize="16"
-                               Foreground="{StaticResource OnAccent}"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                </Border>
+                <!-- The app icon, drawn by tools/IconMaker at 128 pixels so it stays sharp at high display scales -->
+                <Image Source="pack://application:,,,/logo.png" Width="30" Height="30" Margin="0,0,10,0"
+                       RenderOptions.BitmapScalingMode="HighQuality"/>
                 <TextBlock x:Name="TitleText" Text="Nax-Translate"
                            FontFamily="Segoe UI Variable Display, Segoe UI"
                            FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center"/>
