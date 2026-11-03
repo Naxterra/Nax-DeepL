@@ -28,7 +28,9 @@ Nax-Translate is a fast, lightweight Windows desktop translator that works with 
 
 ## The Claude engine
 
-With **Claude** picked in the title bar, the app sends the text to the installed Claude Code tool (`claude -p`) instead of DeepL. It needs no DeepL login and no API key, because it uses the subscription you are signed in with in Claude Code. An `ANTHROPIC_API_KEY` or similar variable in your environment is not passed on, so translations are never billed to an API key. Each translation counts against that subscription's usage limit. The translation appears word by word as it arrives. While Claude is picked, the app keeps one Claude Code process started and waiting, so a translation does not wait for the tool to start. A waiting process sends nothing and uses no quota, but it takes about 200 MB of memory. Every process handles exactly one translation and then ends, so no translation sees an earlier text. The waiting process is ended when you pick DeepL again or quit the app. The app waits for a longer pause in typing before it sends, and it stops a request at once when newer text is typed.
+With **Claude** picked in the title bar, the app sends the text to the installed Claude Code tool (`claude -p`) instead of DeepL. It needs no DeepL login and no API key, because it uses the subscription you are signed in with in Claude Code. An `ANTHROPIC_API_KEY` or similar variable in your environment is not passed on, so translations are never billed to an API key. Each translation counts against that subscription's usage limit. The translation appears when it is complete, the same way as with DeepL. While Claude is picked, the app keeps one Claude Code process started and waiting, so a translation does not wait for the tool to start. A waiting process sends nothing and uses no quota, but it takes about 200 MB of memory. Every process handles exactly one translation and then ends, so no translation sees an earlier text. The waiting process is ended when you pick DeepL again or quit the app. The app waits for a longer pause in typing before it sends, and it stops a request at once when newer text is typed.
+
+**⚙ Verbindung → Claude trennen** (Disconnect Claude) stops using Claude: nothing more is sent to it, a running request is stopped and the waiting process is ended. **Mit Claude verbinden** (Connect Claude) first checks that Claude Code is signed in and then starts using Claude again. The badge next to the app name shows the Claude plan while Claude is picked and connected, for example "Claude Max ✓". The choice is saved.
 
 While Claude is picked, a switch next to the target language sets the tone. **Natural** (the default) translates the way people in Germany would naturally say it and picks du or Sie to suit the text. **Formal** always uses Sie, and **Informal** always uses du. The choice is saved, and changing it translates the current text again.
 
@@ -56,7 +58,8 @@ An installed Nax-DeepL is updated in place: the setup moves the program to the n
 | Switch languages | Use the dropdowns or click ⇌ to swap. |
 | Copy result | Click **📋 Kopieren / Copy**. |
 | Switch engine | Use the Classic, Next-gen and Claude toggle in the title bar. |
-| Log out or switch account | ⚙ Verbindung → Abmelden |
+| Log out of DeepL or switch account | ⚙ Verbindung → Von DeepL abmelden |
+| Connect or disconnect Claude | ⚙ Verbindung → Mit Claude verbinden / Claude trennen |
 
 ## Building from source
 

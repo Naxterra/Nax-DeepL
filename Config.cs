@@ -47,6 +47,9 @@ public class Config
     [JsonPropertyName("claude_model")] public string ClaudeModel { get; set; } = ClaudeCli.DefaultModel;
     // The tone of Claude translations: "natural", "formal" or "informal".
     [JsonPropertyName("claude_tone")]  public string ClaudeTone  { get; set; } = ClaudeCli.ToneNatural;
+    // Whether Claude is connected. While it is not, nothing is sent to Claude and no Claude Code
+    // process is kept waiting.
+    [JsonPropertyName("claude_connected")] public bool ClaudeConnected { get; set; } = true;
     [JsonPropertyName("ui_lang")]   public string  UiLang   { get; set; } = "de";
     [JsonPropertyName("geometry")]  public string? Geometry { get; set; }
 

@@ -85,6 +85,9 @@
                         <MenuItem x:Name="MenuItemSwitch"  Header="Konto wechseln" Click="SwitchAccount_Click"/>
                         <MenuItem x:Name="MenuItemLogout"  Header="Abmelden"       Click="Logout_Click"/>
                         <Separator/>
+                        <MenuItem x:Name="MenuItemClaudeConnect"    Header="Mit Claude verbinden" Click="ClaudeConnect_Click"/>
+                        <MenuItem x:Name="MenuItemClaudeDisconnect" Header="Claude trennen"       Click="ClaudeDisconnect_Click"/>
+                        <Separator/>
                         <MenuItem x:Name="MenuItemStartup" Header="Mit Windows starten"
                                   IsCheckable="True" Click="Startup_Click"/>
                         <Separator/>

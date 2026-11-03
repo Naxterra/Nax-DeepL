@@ -13,6 +13,17 @@ public sealed class ConfigTests : IDisposable
     }
 
     [Fact]
+    public void claude_disconnected_stays_disconnected_after_restart()
+    {
+        Assert.True(Config.Load(ConfigPath).ClaudeConnected, "Claude starts connected by default");
+        var cfg = Config.Load(ConfigPath);
+        cfg.ClaudeConnected = false;
+        cfg.Save();
+
+        Assert.False(Config.Load(ConfigPath).ClaudeConnected);
+    }
+
+    [Fact]
     public void login_tokens_saved_encrypted_never_in_plain_text()
     {
         var cfg = Config.Load(ConfigPath);

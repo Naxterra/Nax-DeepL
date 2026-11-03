@@ -395,6 +395,29 @@ public class ClaudeCliTests
     }
 
     [Fact]
+    public void signed_in_claude_code_reports_its_plan()
+    {
+        var auth = ClaudeCli.ParseAuthStatus("""{"loggedIn":true,"authMethod":"claude.ai","email":"someone@example.com","subscriptionType":"max"}""");
+        Assert.True(auth.LoggedIn);
+        Assert.Equal("Max", auth.Plan);
+    }
+
+    [Fact]
+    public void signed_out_claude_code_reported_as_not_signed_in_without_plan()
+    {
+        var auth = ClaudeCli.ParseAuthStatus("""{"loggedIn":false,"subscriptionType":"pro"}""");
+        Assert.False(auth.LoggedIn);
+        Assert.Null(auth.Plan);
+    }
+
+    [Fact]
+    public void unreadable_sign_in_status_counts_as_not_signed_in()
+    {
+        Assert.False(ClaudeCli.ParseAuthStatus("Error: something went wrong").LoggedIn);
+        Assert.False(ClaudeCli.ParseAuthStatus("").LoggedIn);
+    }
+
+    [Fact]
     public void natural_tone_asks_for_idiomatic_german_as_used_in_germany()
     {
         var prompt = ClaudeCli.BuildPrompt("See you tomorrow!", "de", "auto", ClaudeCli.ToneNatural);

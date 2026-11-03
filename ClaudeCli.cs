@@ -33,6 +33,9 @@ public interface IClaudeProcess : IDisposable
     void Kill();
 }
 
+/// <summary>What "claude auth status" reported: whether Claude Code is signed in, and the plan, such as "Max".</summary>
+public readonly record struct ClaudeAuth(bool LoggedIn, string? Plan);
+
 /// <summary>Starts a new Claude Code process for the given model.</summary>
 public delegate IClaudeProcess ClaudeProcessFactory(string model);
 
@@ -235,6 +238,61 @@ public static class ClaudeCli
                                         "CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY",
                                         "CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT"])
             env.Remove(name);
+    }
+
+    /// <summary>
+    /// Reads the JSON of "claude auth status --json". Only whether Claude Code is signed in and the
+    /// plan name are used; the account's address and organization are ignored.
+    /// </summary>
+    internal static ClaudeAuth ParseAuthStatus(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            var loggedIn = root.TryGetProperty("loggedIn", out var l) && l.ValueKind == JsonValueKind.True;
+            var plan = root.TryGetProperty("subscriptionType", out var p) && p.ValueKind == JsonValueKind.String
+                ? p.GetString() : null;
+            if (!string.IsNullOrWhiteSpace(plan)) plan = char.ToUpperInvariant(plan[0]) + plan[1..];
+            else plan = null;
+            return new ClaudeAuth(loggedIn, loggedIn ? plan : null);
+        }
+        catch (JsonException) { return new ClaudeAuth(false, null); }
+    }
+
+    /// <summary>
+    /// Asks the installed Claude Code whether it is signed in. This makes no model request and uses
+    /// no quota. Throws <see cref="ClaudeNotFoundException"/> when Claude Code is not installed.
+    /// </summary>
+    public static async Task<ClaudeAuth> CheckAuthAsync(CancellationToken ct = default)
+    {
+        var exe = FindExecutable() ?? throw new ClaudeNotFoundException();
+        var psi = new ProcessStartInfo(exe)
+        {
+            UseShellExecute        = false,
+            CreateNoWindow         = true,
+            RedirectStandardInput  = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError  = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            WorkingDirectory       = Path.GetTempPath(),
+        };
+        foreach (var a in (string[])["auth", "status", "--json"]) psi.ArgumentList.Add(a);
+        PrepareEnvironment(psi.Environment);
+
+        using var proc = new Process { StartInfo = psi };
+        try { proc.Start(); }
+        catch (Win32Exception) { throw new ClaudeNotFoundException(); }
+        proc.StandardInput.Close();
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(TimeSpan.FromSeconds(15));
+        using var stop = timeout.Token.Register(() => { try { proc.Kill(entireProcessTree: true); } catch { } });
+        var stdout = await proc.StandardOutput.ReadToEndAsync(CancellationToken.None);
+        await proc.WaitForExitAsync(CancellationToken.None);
+        ct.ThrowIfCancellationRequested();
+        if (timeout.IsCancellationRequested) throw new TimeoutException("Claude Code did not answer the sign-in check.");
+        return ParseAuthStatus(stdout);
     }
 
     /// <summary>Finds claude.exe on the PATH or in the place where the native installer puts it.</summary>

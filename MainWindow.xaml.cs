@@ -19,7 +19,6 @@ public partial class MainWindow : Window
     bool                      _claude;          // the Claude engine is picked instead of DeepL
     bool                      _busy;            // a translation is running right now
     readonly ClaudeSession    _claudeSession = new();
-    bool                      _partialShown;    // the box shows part of a Claude answer that is still arriving
     string                    _lastSrc = "";
     string?                   _detected;        // language DeepL detected in the shown translation
     bool                      _failed;          // last translation could not reach DeepL
@@ -44,7 +43,7 @@ public partial class MainWindow : Window
         {
             // Replaces a waiting Claude process once it is too old, so the next translation
             // still finds one ready instead of starting the tool then.
-            if (_claude) _claudeSession.WarmUp(_cfg.ClaudeModel);
+            if (_claude && _cfg.ClaudeConnected) _claudeSession.WarmUp(_cfg.ClaudeModel);
             await RefreshTokenAsync();
         };
         _refresh.Start();
@@ -121,6 +120,70 @@ public partial class MainWindow : Window
     async void OnLoaded(object s, RoutedEventArgs e)
     {
         await RefreshTokenAsync();
+        // With Claude picked and connected, check the Claude Code sign-in once, so the badge shows
+        // the plan and a missing sign-in is reported before the first translation.
+        if (_claude && _cfg.ClaudeConnected) await CheckClaudeAsync(quiet: true);
+    }
+
+    /// <summary>
+    /// Asks Claude Code whether it is signed in and shows the result in the badge and, unless
+    /// <paramref name="quiet"/>, in the status line. Returns true when it is signed in.
+    /// </summary>
+    async Task<bool> CheckClaudeAsync(bool quiet)
+    {
+        if (!quiet) SetStatus(Loc.StatusClaudeChecking);
+        try
+        {
+            var auth = await ClaudeCli.CheckAuthAsync();
+            if (!auth.LoggedIn)
+            {
+                _claudeBadge = "";
+                UpdateBadge();
+                SetStatus(Loc.StatusClaudeNotSignedIn);
+                return false;
+            }
+            _claudeBadge = auth.Plan != null ? $"Claude {auth.Plan} ✓" : "Claude ✓";
+            UpdateBadge();
+            if (!quiet) SetStatus(Loc.StatusClaudeConnected(auth.Plan));
+            return true;
+        }
+        catch (ClaudeNotFoundException)
+        {
+            _claudeBadge = "";
+            UpdateBadge();
+            SetStatus(Loc.StatusClaudeNotFound);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            SetStatus(Loc.StatusError + ex.Message);
+            return false;
+        }
+    }
+
+    async void ClaudeConnect_Click(object s, RoutedEventArgs e)
+    {
+        if (!await CheckClaudeAsync(quiet: false)) return;
+        _cfg.ClaudeConnected = true;
+        _cfg.Save();
+        if (_claude) _claudeSession.WarmUp(_cfg.ClaudeModel);
+        UpdateBadge();
+        // Translate what is in the box now that Claude can be reached.
+        _lastSrc = "";
+        _debounce.Stop();
+        _debounce.Start();
+    }
+
+    void ClaudeDisconnect_Click(object s, RoutedEventArgs e)
+    {
+        _cfg.ClaudeConnected = false;
+        _cfg.Save();
+        // Stop a Claude request that is still running and end the waiting process, so nothing
+        // more reaches Claude and no Claude Code process stays in memory.
+        if (_claude) CancelRunningTranslation();
+        _claudeSession.DropSpare();
+        UpdateBadge();
+        SetStatus(Loc.StatusClaudeDisconnectedNow);
     }
 
     /// <summary>
@@ -212,23 +275,24 @@ public partial class MainWindow : Window
         var claude = _claude;
         var tone   = _cfg.ClaudeTone;
         var engineName = claude ? "Claude" : "DeepL";
+
+        // While Claude is disconnected, nothing is sent to it. Clearing _lastSrc translates the
+        // text as soon as Claude is connected again.
+        if (claude && !_cfg.ClaudeConnected)
+        {
+            _lastSrc = "";
+            SetStatus(Loc.StatusClaudeDisconnected);
+            return;
+        }
+
+        // Claude's answer is shown when it is complete, like DeepL's, instead of word by word.
         Task<(string Text, string? DetectedLang)> Run(string tgt) => claude
-            ? _claudeSession.TranslateAsync(src, tgt, srcLang, _cfg.ClaudeModel, tone: tone, onPartial: (part, lang) =>
-              {
-                  // Claude's answer arrives word by word, so show it as it comes. When the text
-                  // turns out to be in the target language already, it is translated again
-                  // below, so this first answer is not shown.
-                  if (ct.IsCancellationRequested) return;
-                  if (srcLang == "auto" && DeepLApi.AutoTarget(lang, tgt) != null) return;
-                  TgtBox.Text   = part;
-                  _partialShown = true;
-              }, ct: ct)
+            ? _claudeSession.TranslateAsync(src, tgt, srcLang, _cfg.ClaudeModel, tone: tone, ct: ct)
             : DeepLApi.TranslateAsync(src, tgt, srcLang, _token, _nextGen, ct);
 
         SetStatus(Loc.StatusTranslating);
         var started = System.Diagnostics.Stopwatch.StartNew();
-        _busy         = true;
-        _partialShown = false;
+        _busy = true;
         try
         {
             (string Text, string? Detected) result;
@@ -259,9 +323,8 @@ public partial class MainWindow : Window
                 ct.ThrowIfCancellationRequested();
             }
 
-            TgtBox.Text   = result.Text;
-            _detected     = result.Detected;
-            _partialShown = false;
+            TgtBox.Text = result.Text;
+            _detected   = result.Detected;
             _failed = false;
             _retry.Stop();
             _retry.Interval = FirstRetryDelay;
@@ -317,21 +380,9 @@ public partial class MainWindow : Window
         }
         finally
         {
-            // Only the newest translation clears the flags. An older one that was cancelled must
-            // not touch what a newer one shows.
-            if (_cts.Token == ct)
-            {
-                _busy = false;
-                // The translation failed or was stopped after part of Claude's answer was shown.
-                // A cut-off text must not stay in the box, where Copy would take it as complete,
-                // and the language of an older translation must not steer the swap button.
-                if (_partialShown)
-                {
-                    TgtBox.Clear();
-                    _detected     = null;
-                    _partialShown = false;
-                }
-            }
+            // Only the newest translation clears the flag. An older one that was cancelled must
+            // not mark a newer one as finished.
+            if (_cts.Token == ct) _busy = false;
         }
     }
 
@@ -414,14 +465,19 @@ public partial class MainWindow : Window
         // Every Claude run takes a few seconds and counts against the subscription's usage
         // limit, so wait for a longer pause in typing before sending.
         _debounce.Interval = TimeSpan.FromMilliseconds(_claude ? 1500 : 800);
-        BadgePill.Visibility = !_claude && Badge.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        UpdateBadge();
         // The tone only applies to Claude, so the switch is hidden for DeepL.
         TonePanel.Visibility = _claude ? Visibility.Visible : Visibility.Collapsed;
-        if (IsLoaded) SetStatus(_claude || _token != null ? Loc.StatusReady : Loc.StatusNotAuth);
+        if (IsLoaded)
+            SetStatus(_claude ? (_cfg.ClaudeConnected ? Loc.StatusReady : Loc.StatusClaudeDisconnected)
+                              : (_token != null ? Loc.StatusReady : Loc.StatusNotAuth));
         // Start Claude Code ahead of time, so the first translation does not wait for it. With
-        // DeepL picked, no Claude process is kept around.
-        if (_claude) _claudeSession.WarmUp(_cfg.ClaudeModel);
-        else         _claudeSession.DropSpare();
+        // DeepL picked, or Claude disconnected, no Claude process is kept around.
+        if (_claude && _cfg.ClaudeConnected) _claudeSession.WarmUp(_cfg.ClaudeModel);
+        else                                 _claudeSession.DropSpare();
+        // The first switch to Claude after start checks the sign-in, so the badge shows the plan.
+        if (IsLoaded && _claude && _cfg.ClaudeConnected && _claudeBadge.Length == 0)
+            _ = CheckClaudeAsync(quiet: true);
         _lastSrc       = "";
         _debounce.Stop();
         _debounce.Start();
@@ -464,6 +520,9 @@ public partial class MainWindow : Window
         MenuItemLogin.Visibility  = loggedIn ? Visibility.Collapsed : Visibility.Visible;
         MenuItemSwitch.Visibility = loggedIn ? Visibility.Visible   : Visibility.Collapsed;
         MenuItemLogout.Visibility = loggedIn ? Visibility.Visible   : Visibility.Collapsed;
+        var claudeOn = _cfg.ClaudeConnected;
+        MenuItemClaudeConnect.Visibility    = claudeOn ? Visibility.Collapsed : Visibility.Visible;
+        MenuItemClaudeDisconnect.Visibility = claudeOn ? Visibility.Visible   : Visibility.Collapsed;
 
         var cm = VerbindungBtn.ContextMenu;
         cm.PlacementTarget = VerbindungBtn;
@@ -600,6 +659,8 @@ public partial class MainWindow : Window
         MenuItemLogin.Header    = Loc.MenuLogin;
         MenuItemSwitch.Header   = Loc.MenuSwitch;
         MenuItemLogout.Header   = Loc.MenuLogout;
+        MenuItemClaudeConnect.Header    = Loc.MenuClaudeConnect;
+        MenuItemClaudeDisconnect.Header = Loc.MenuClaudeDisconnect;
         MenuItemStartup.Header  = Loc.MenuStartup;
         MenuItemAbout.Header    = Loc.MenuAbout;
         ToneNaturalRb.Content   = Loc.ToneNatural;
@@ -613,11 +674,22 @@ public partial class MainWindow : Window
 
     // ──────────────────────────── Helpers ────────────────────────────────────────────
 
-    // The badge shows the DeepL Pro login, so it is hidden while the Claude engine is picked.
+    // The badge shows the login of the picked engine: "Pro ✓" for DeepL, and "Claude Max ✓" or
+    // similar for a connected Claude.
+    string _deeplBadge  = "";
+    string _claudeBadge = "";
+
     void SetBadge(string text)
     {
+        _deeplBadge = text;
+        UpdateBadge();
+    }
+
+    void UpdateBadge()
+    {
+        var text = _claude ? (_cfg.ClaudeConnected ? _claudeBadge : "") : _deeplBadge;
         Badge.Text           = text;
-        BadgePill.Visibility = !_claude && text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        BadgePill.Visibility = text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     void SetStatus(string text) => StatusText.Text = text;
