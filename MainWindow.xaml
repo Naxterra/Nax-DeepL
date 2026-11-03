@@ -116,9 +116,9 @@
                 <StackPanel Orientation="Horizontal">
                     <RadioButton x:Name="ToneNaturalRb"  Content="Natürlich" Style="{StaticResource SegBtn}"
                                  Checked="Tone_Changed"/>
-                    <RadioButton x:Name="ToneFormalRb"   Content="Förmlich"  Style="{StaticResource SegBtn}"
+                    <RadioButton x:Name="ToneFormalRb"   Content="Sie"       Style="{StaticResource SegBtn}"
                                  Checked="Tone_Changed"/>
-                    <RadioButton x:Name="ToneInformalRb" Content="Locker"    Style="{StaticResource SegBtn}"
+                    <RadioButton x:Name="ToneInformalRb" Content="Du"        Style="{StaticResource SegBtn}"
                                  Checked="Tone_Changed"/>
                 </StackPanel>
             </Border>
