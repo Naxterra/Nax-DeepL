@@ -395,6 +395,40 @@ public class ClaudeCliTests
     }
 
     [Fact]
+    public void natural_tone_asks_for_idiomatic_german_as_used_in_germany()
+    {
+        var prompt = ClaudeCli.BuildPrompt("See you tomorrow!", "de", "auto", ClaudeCli.ToneNatural);
+        Assert.Contains("Tone: natural", prompt);
+        Assert.Contains("as it is used in Germany", prompt);
+    }
+
+    [Fact]
+    public void formal_tone_asks_for_sie_and_informal_tone_for_du()
+    {
+        Assert.Contains("\"Sie\"", ClaudeCli.BuildPrompt("Can you help me?", "de", "en", ClaudeCli.ToneFormal));
+        Assert.Contains("Tone: formal", ClaudeCli.BuildPrompt("Can you help me?", "de", "en", ClaudeCli.ToneFormal));
+        Assert.Contains("\"du\"", ClaudeCli.BuildPrompt("Can you help me?", "de", "en", ClaudeCli.ToneInformal));
+        Assert.Contains("Tone: informal", ClaudeCli.BuildPrompt("Can you help me?", "de", "en", ClaudeCli.ToneInformal));
+    }
+
+    [Fact]
+    public void unknown_or_missing_tone_setting_falls_back_to_natural()
+    {
+        Assert.Equal(ClaudeCli.ToneNatural, ClaudeCli.NormalizeTone(null));
+        Assert.Equal(ClaudeCli.ToneNatural, ClaudeCli.NormalizeTone("sarcastic"));
+        Assert.Contains("Tone: natural", ClaudeCli.BuildPrompt("Hi", "de", "auto", "sarcastic"));
+    }
+
+    [Fact]
+    public async Task chosen_tone_reaches_claude_with_the_text()
+    {
+        var f = Replies(Answer("lang: EN\nKannst du mir helfen?"));
+        using var s = new ClaudeSession(f.Start);
+        await s.TranslateAsync("Can you help me?", "de", tone: ClaudeCli.ToneInformal);
+        Assert.Contains("Tone: informal", f.Started[0].Written.Single());
+    }
+
+    [Fact]
     public async Task text_goes_to_claude_as_json_message_with_target_language_named()
     {
         var f = Replies(Answer("lang: DE\nHello"));

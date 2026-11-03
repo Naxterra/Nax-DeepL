@@ -4,8 +4,10 @@ namespace NaxTranslate.Tests;
 
 /// <summary>
 /// Runs the "Start with Windows" helper against a throw-away key under HKCU, never against the
-/// real Run key.
+/// real Run key. It shares its parent test key with SchemeHandlerTests, so both run in one
+/// collection: run in parallel, one class could delete the parent key while the other writes below it.
 /// </summary>
+[Collection("RegistryTests")]
 public sealed class StartupTests : IDisposable
 {
     readonly string _base = $@"Software\NaxTranslate.Tests\{Guid.NewGuid():N}";

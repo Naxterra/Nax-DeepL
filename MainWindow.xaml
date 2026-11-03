@@ -100,6 +100,7 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="56"/>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <ComboBox x:Name="SrcCombo" Grid.Column="0" SelectionChanged="Lang_Changed"/>
@@ -108,6 +109,19 @@
                     HorizontalAlignment="Center" Click="Swap_Click"/>
 
             <ComboBox x:Name="TgtCombo" Grid.Column="2" SelectionChanged="Lang_Changed"/>
+
+            <!-- Tone of Claude translations, shown only while Claude is picked -->
+            <Border x:Name="TonePanel" Grid.Column="3" Style="{StaticResource SegGroup}" Margin="8,0,0,0"
+                    VerticalAlignment="Center" Visibility="Collapsed">
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton x:Name="ToneNaturalRb"  Content="Natürlich" Style="{StaticResource SegBtn}"
+                                 Checked="Tone_Changed"/>
+                    <RadioButton x:Name="ToneFormalRb"   Content="Förmlich"  Style="{StaticResource SegBtn}"
+                                 Checked="Tone_Changed"/>
+                    <RadioButton x:Name="ToneInformalRb" Content="Locker"    Style="{StaticResource SegBtn}"
+                                 Checked="Tone_Changed"/>
+                </StackPanel>
+            </Border>
         </Grid>
 
         <!-- ═══ Text cards ═══ -->

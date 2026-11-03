@@ -45,6 +45,8 @@ public class Config
     [JsonPropertyName("engine")]    public string  Engine   { get; set; } = "classic";
     // The model the Claude engine asks for, as an alias such as "sonnet" or "haiku".
     [JsonPropertyName("claude_model")] public string ClaudeModel { get; set; } = ClaudeCli.DefaultModel;
+    // The tone of Claude translations: "natural", "formal" or "informal".
+    [JsonPropertyName("claude_tone")]  public string ClaudeTone  { get; set; } = ClaudeCli.ToneNatural;
     [JsonPropertyName("ui_lang")]   public string  UiLang   { get; set; } = "de";
     [JsonPropertyName("geometry")]  public string? Geometry { get; set; }
 

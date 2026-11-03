@@ -67,6 +67,9 @@ public partial class MainWindow : Window
         if (_cfg.UiLang == "en") LangEnRb.IsChecked = true;
         else                     LangDeRb.IsChecked  = true;
         Loc.Changed += ApplyLocalization;
+        // The language was set above, before this handler existed, so apply the texts once now.
+        // Otherwise an English interface would start with German labels and without tooltips.
+        ApplyLocalization();
 
         // Populate dropdowns
         SrcCombo.ItemsSource = DeepLApi.SrcLangs.Keys;
@@ -77,6 +80,11 @@ public partial class MainWindow : Window
             k => DeepLApi.SrcLangs[k] == _cfg.SrcLang, "Automatisch");
         TgtCombo.SelectedItem = DeepLApi.TgtLangs.Keys.FirstOrDefault(
             k => DeepLApi.TgtLangs[k] == _cfg.TgtLang, "Deutsch");
+
+        var tone = ClaudeCli.NormalizeTone(_cfg.ClaudeTone);
+        if      (tone == ClaudeCli.ToneFormal)   ToneFormalRb.IsChecked   = true;
+        else if (tone == ClaudeCli.ToneInformal) ToneInformalRb.IsChecked = true;
+        else                                     ToneNaturalRb.IsChecked  = true;
 
         if      (_cfg.Engine == "claude")  ClaudeRb.IsChecked  = true;
         else if (_cfg.Engine == "nextgen") NextgenRb.IsChecked = true;
@@ -202,9 +210,10 @@ public partial class MainWindow : Window
 
         // The engine is fixed for this whole translation, even if the toggle changes meanwhile.
         var claude = _claude;
+        var tone   = _cfg.ClaudeTone;
         var engineName = claude ? "Claude" : "DeepL";
         Task<(string Text, string? DetectedLang)> Run(string tgt) => claude
-            ? _claudeSession.TranslateAsync(src, tgt, srcLang, _cfg.ClaudeModel, (part, lang) =>
+            ? _claudeSession.TranslateAsync(src, tgt, srcLang, _cfg.ClaudeModel, tone: tone, onPartial: (part, lang) =>
               {
                   // Claude's answer arrives word by word, so show it as it comes. When the text
                   // turns out to be in the target language already, it is translated again
@@ -213,7 +222,7 @@ public partial class MainWindow : Window
                   if (srcLang == "auto" && DeepLApi.AutoTarget(lang, tgt) != null) return;
                   TgtBox.Text   = part;
                   _partialShown = true;
-              }, ct)
+              }, ct: ct)
             : DeepLApi.TranslateAsync(src, tgt, srcLang, _token, _nextGen, ct);
 
         SetStatus(Loc.StatusTranslating);
@@ -384,6 +393,18 @@ public partial class MainWindow : Window
         _debounce.Start();
     }
 
+    void Tone_Changed(object s, RoutedEventArgs e)
+    {
+        _cfg.ClaudeTone = ToneFormalRb.IsChecked   == true ? ClaudeCli.ToneFormal
+                        : ToneInformalRb.IsChecked == true ? ClaudeCli.ToneInformal
+                        :                                    ClaudeCli.ToneNatural;
+        _cfg.Save();
+        if (!_claude) return;
+        _lastSrc = "";   // translate the same text again in the new tone
+        _debounce.Stop();
+        _debounce.Start();
+    }
+
     void Engine_Changed(object s, RoutedEventArgs e)
     {
         _nextGen       = NextgenRb.IsChecked == true;
@@ -394,6 +415,8 @@ public partial class MainWindow : Window
         // limit, so wait for a longer pause in typing before sending.
         _debounce.Interval = TimeSpan.FromMilliseconds(_claude ? 1500 : 800);
         BadgePill.Visibility = !_claude && Badge.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        // The tone only applies to Claude, so the switch is hidden for DeepL.
+        TonePanel.Visibility = _claude ? Visibility.Visible : Visibility.Collapsed;
         if (IsLoaded) SetStatus(_claude || _token != null ? Loc.StatusReady : Loc.StatusNotAuth);
         // Start Claude Code ahead of time, so the first translation does not wait for it. With
         // DeepL picked, no Claude process is kept around.
@@ -579,6 +602,12 @@ public partial class MainWindow : Window
         MenuItemLogout.Header   = Loc.MenuLogout;
         MenuItemStartup.Header  = Loc.MenuStartup;
         MenuItemAbout.Header    = Loc.MenuAbout;
+        ToneNaturalRb.Content   = Loc.ToneNatural;
+        ToneFormalRb.Content    = Loc.ToneFormal;
+        ToneInformalRb.Content  = Loc.ToneInformal;
+        ToneNaturalRb.ToolTip   = Loc.ToneNaturalTip;
+        ToneFormalRb.ToolTip    = Loc.ToneFormalTip;
+        ToneInformalRb.ToolTip  = Loc.ToneInformalTip;
         Title                   = Loc.AppTitle;
     }
 

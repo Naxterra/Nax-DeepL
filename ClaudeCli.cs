@@ -88,13 +88,38 @@ public static class ClaudeCli
         "--verbose",
     ];
 
+    /// <summary>The tones the Claude engine offers. Natural is the default.</summary>
+    public const string ToneNatural  = "natural";
+    public const string ToneFormal   = "formal";
+    public const string ToneInformal = "informal";
+
+    /// <summary>An unknown or missing tone setting falls back to natural.</summary>
+    internal static string NormalizeTone(string? tone) =>
+        tone is ToneFormal or ToneInformal ? tone : ToneNatural;
+
+    static string ToneInstruction(string tone) => NormalizeTone(tone) switch
+    {
+        ToneFormal =>
+            "Tone: formal. Use the formal form of address (in German \"Sie\", in Turkish \"siz\") " +
+            "and a polite, professional register.",
+        ToneInformal =>
+            "Tone: informal. Use the informal form of address (in German \"du\", in Turkish \"sen\") " +
+            "and a casual, friendly register.",
+        _ =>
+            "Tone: natural. Write the translation the way a native speaker would naturally put it, " +
+            "not word for word. For German, write natural, idiomatic German as it is used in " +
+            "Germany today, and choose \"du\" or \"Sie\" the way a German speaker would in this " +
+            "situation, following the tone of the text.",
+    };
+
     /// <summary>The user message for one translation.</summary>
-    internal static string BuildPrompt(string text, string tgtLang, string srcLang)
+    internal static string BuildPrompt(string text, string tgtLang, string srcLang, string? tone = null)
     {
         var sb = new StringBuilder();
         sb.Append("Target language: ").Append(NameOf(tgtLang)).Append('\n');
         if (srcLang != "auto")
             sb.Append("Source language: ").Append(NameOf(srcLang)).Append('\n');
+        sb.Append(ToneInstruction(tone ?? ToneNatural)).Append('\n');
         sb.Append("\n<text>\n").Append(text).Append("\n</text>");
         return sb.ToString();
     }
@@ -296,7 +321,9 @@ public sealed class ClaudeSession(ClaudeProcessFactory? factory = null) : IDispo
 
     /// <summary>
     /// Translates the text. <paramref name="onPartial"/> receives the part of the translation that
-    /// has arrived so far, and the detected language once it is known.
+    /// has arrived so far, and the detected language once it is known. <paramref name="tone"/> is
+    /// one of <see cref="ClaudeCli.ToneNatural"/>, <see cref="ClaudeCli.ToneFormal"/> and
+    /// <see cref="ClaudeCli.ToneInformal"/>.
     /// </summary>
     public async Task<(string Text, string? DetectedLang)> TranslateAsync(
         string text,
@@ -304,7 +331,8 @@ public sealed class ClaudeSession(ClaudeProcessFactory? factory = null) : IDispo
         string srcLang                   = "auto",
         string? model                    = null,
         Action<string, string?>? onPartial = null,
-        CancellationToken ct             = default)
+        CancellationToken ct             = default,
+        string? tone                     = null)
     {
         // Every translation counts against the subscription's usage limit, so a long clipboard
         // must never go out by accident. The window checks this too and explains it to the user.
@@ -314,7 +342,7 @@ public sealed class ClaudeSession(ClaudeProcessFactory? factory = null) : IDispo
         ct.ThrowIfCancellationRequested();
         model = ClaudeCli.NormalizeModel(model);
 
-        var message = ClaudeCli.UserMessageLine(ClaudeCli.BuildPrompt(text, tgtLang, srcLang));
+        var message = ClaudeCli.UserMessageLine(ClaudeCli.BuildPrompt(text, tgtLang, srcLang, tone));
 
         // The timeout and the cancellation cover the whole request, from writing the text to the
         // last line of the answer. Writing can block when the tool does not read its input, for

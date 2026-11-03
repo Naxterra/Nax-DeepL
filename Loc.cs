@@ -53,6 +53,16 @@ public static class Loc
     public static string StatusOffline   => En ? "No connection to DeepL. Retrying automatically…"
                                                : "Keine Verbindung zu DeepL. Neuer Versuch läuft automatisch…";
 
+    public static string ToneNatural      => En ? "Natural"                                 : "Natürlich";
+    public static string ToneFormal       => En ? "Formal"                                  : "Förmlich";
+    public static string ToneInformal     => En ? "Informal"                                : "Locker";
+    public static string ToneNaturalTip   => En ? "Claude translates the way people in Germany would naturally say it, and picks du or Sie to suit the text."
+                                                : "Claude übersetzt so, wie man es in Deutschland natürlich sagen würde, und wählt du oder Sie passend zum Text.";
+    public static string ToneFormalTip    => En ? "Claude uses the formal form of address (Sie)."
+                                                : "Claude verwendet die förmliche Anrede (Sie).";
+    public static string ToneInformalTip  => En ? "Claude uses the informal form of address (du)."
+                                                : "Claude verwendet die lockere Anrede (du).";
+
     public static string MenuStartup      => En ? "Start with Windows"                      : "Mit Windows starten";
     public static string MenuAbout        => En ? "About"                                   : "Über";
 
