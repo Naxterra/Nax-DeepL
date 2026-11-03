@@ -16,6 +16,10 @@ public partial class MainWindow : Window
     CancellationTokenSource   _cts  = new();
     string?                   _token;
     bool                      _nextGen;
+    bool                      _claude;          // the Claude engine is picked instead of DeepL
+    bool                      _busy;            // a translation is running right now
+    readonly ClaudeSession    _claudeSession = new();
+    bool                      _partialShown;    // the box shows part of a Claude answer that is still arriving
     string                    _lastSrc = "";
     string?                   _detected;        // language DeepL detected in the shown translation
     bool                      _failed;          // last translation could not reach DeepL
@@ -36,7 +40,13 @@ public partial class MainWindow : Window
         _debounce.Tick += (_, _) => { _debounce.Stop(); _ = TranslateAsync(); };
 
         _refresh = new DispatcherTimer { Interval = TimeSpan.FromMinutes(15) };
-        _refresh.Tick += async (_, _) => await RefreshTokenAsync();
+        _refresh.Tick += async (_, _) =>
+        {
+            // Replaces a waiting Claude process once it is too old, so the next translation
+            // still finds one ready instead of starting the tool then.
+            if (_claude) _claudeSession.WarmUp(_cfg.ClaudeModel);
+            await RefreshTokenAsync();
+        };
         _refresh.Start();
 
         // While DeepL is unreachable, try again with a pause that doubles up to five minutes.
@@ -68,8 +78,9 @@ public partial class MainWindow : Window
         TgtCombo.SelectedItem = DeepLApi.TgtLangs.Keys.FirstOrDefault(
             k => DeepLApi.TgtLangs[k] == _cfg.TgtLang, "Deutsch");
 
-        if (_cfg.Engine == "nextgen") NextgenRb.IsChecked = true;
-        else                          ClassicRb.IsChecked = true;
+        if      (_cfg.Engine == "claude")  ClaudeRb.IsChecked  = true;
+        else if (_cfg.Engine == "nextgen") NextgenRb.IsChecked = true;
+        else                               ClassicRb.IsChecked = true;
 
         // Restore geometry
         if (!string.IsNullOrEmpty(_cfg.Geometry))
@@ -117,7 +128,7 @@ public partial class MainWindow : Window
             if (!force && _token != null && !DeepLApi.IsTokenExpired(_token))
                 return;
 
-            SetStatus(Loc.StatusChecking);
+            SetAuthStatus(Loc.StatusChecking);
 
             // 2. Standard OIDC refresh token
             if (!string.IsNullOrEmpty(_cfg.RefreshToken))
@@ -130,7 +141,7 @@ public partial class MainWindow : Window
                     _cfg.DlAccess = access;
                     if (refresh != null) _cfg.RefreshToken = refresh;
                     _cfg.Save();
-                    SetBadge("Pro ✓"); SetStatus(Loc.StatusReady); return;
+                    SetBadge("Pro ✓"); SetAuthStatus(Loc.StatusReady); return;
                 }
             }
 
@@ -138,18 +149,18 @@ public partial class MainWindow : Window
             if (!force && !string.IsNullOrEmpty(_cfg.DlAccess) && !DeepLApi.IsTokenExpired(_cfg.DlAccess))
             {
                 _token = _cfg.DlAccess;
-                SetBadge("Pro ✓"); SetStatus(Loc.StatusReady); return;
+                SetBadge("Pro ✓"); SetAuthStatus(Loc.StatusReady); return;
             }
 
             _token = null;
             SetBadge("");
-            SetStatus(Loc.StatusNotAuth);
+            SetAuthStatus(Loc.StatusNotAuth);
         }
         catch (Exception)
         {
             // Offline or DeepL had a server error. Keep whatever login we have and try again later.
             _token ??= _cfg.DlAccess;
-            SetStatus(Loc.StatusOffline);
+            SetAuthStatus(Loc.StatusOffline);
         }
         finally
         {
@@ -189,13 +200,32 @@ public partial class MainWindow : Window
         var srcLang = DeepLApi.SrcLangs[(string)SrcCombo.SelectedItem!];
         var tgtLang = DeepLApi.TgtLangs[(string)TgtCombo.SelectedItem!];
 
+        // The engine is fixed for this whole translation, even if the toggle changes meanwhile.
+        var claude = _claude;
+        var engineName = claude ? "Claude" : "DeepL";
+        Task<(string Text, string? DetectedLang)> Run(string tgt) => claude
+            ? _claudeSession.TranslateAsync(src, tgt, srcLang, _cfg.ClaudeModel, (part, lang) =>
+              {
+                  // Claude's answer arrives word by word, so show it as it comes. When the text
+                  // turns out to be in the target language already, it is translated again
+                  // below, so this first answer is not shown.
+                  if (ct.IsCancellationRequested) return;
+                  if (srcLang == "auto" && DeepLApi.AutoTarget(lang, tgt) != null) return;
+                  TgtBox.Text   = part;
+                  _partialShown = true;
+              }, ct)
+            : DeepLApi.TranslateAsync(src, tgt, srcLang, _token, _nextGen, ct);
+
         SetStatus(Loc.StatusTranslating);
+        var started = System.Diagnostics.Stopwatch.StartNew();
+        _busy         = true;
+        _partialShown = false;
         try
         {
             (string Text, string? Detected) result;
             try
             {
-                result = await DeepLApi.TranslateAsync(src, tgtLang, srcLang, _token, _nextGen, ct);
+                result = await Run(tgtLang);
             }
             catch (AuthExpiredException)
             {
@@ -203,7 +233,7 @@ public partial class MainWindow : Window
                 await RefreshTokenAsync(force: true);
                 ct.ThrowIfCancellationRequested();
                 if (_token == null) { _failed = false; return; }   // status already says "not logged in"
-                result = await DeepLApi.TranslateAsync(src, tgtLang, srcLang, _token, _nextGen, ct);
+                result = await Run(tgtLang);
             }
             ct.ThrowIfCancellationRequested();
 
@@ -216,18 +246,41 @@ public partial class MainWindow : Window
                 finally { _autoSwitching = false; }
                 _cfg.TgtLang = newTgt;
                 _cfg.Save();
-                result = await DeepLApi.TranslateAsync(src, newTgt, srcLang, _token, _nextGen, ct);
+                result = await Run(newTgt);
                 ct.ThrowIfCancellationRequested();
             }
 
-            TgtBox.Text = result.Text;
-            _detected   = result.Detected;
+            TgtBox.Text   = result.Text;
+            _detected     = result.Detected;
+            _partialShown = false;
             _failed = false;
             _retry.Stop();
             _retry.Interval = FirstRetryDelay;
-            SetStatus(Loc.StatusTranslated(result.Detected));
+            SetStatus(Loc.StatusTranslated(result.Detected, engineName, started.Elapsed));
         }
         catch (OperationCanceledException) { }
+        catch (ClaudeLimitReachedException ex)
+        {
+            if (ct.IsCancellationRequested) return;
+            // No automatic retry, because every attempt counts against the limit.
+            _failed  = false;
+            _lastSrc = "";
+            SetStatus(Loc.StatusClaudeLimit(ex.Message));
+        }
+        catch (ClaudeBusyException)
+        {
+            if (ct.IsCancellationRequested) return;
+            _failed  = false;
+            _lastSrc = "";
+            SetStatus(Loc.StatusClaudeBusy);
+        }
+        catch (ClaudeNotFoundException)
+        {
+            if (ct.IsCancellationRequested) return;
+            _failed  = false;
+            _lastSrc = "";
+            SetStatus(Loc.StatusClaudeNotFound);
+        }
         catch (OfflineException)
         {
             if (ct.IsCancellationRequested) return;
@@ -253,6 +306,45 @@ public partial class MainWindow : Window
             _lastSrc = "";
             SetStatus(Loc.StatusError + ex.Message);
         }
+        finally
+        {
+            // Only the newest translation clears the flags. An older one that was cancelled must
+            // not touch what a newer one shows.
+            if (_cts.Token == ct)
+            {
+                _busy = false;
+                // The translation failed or was stopped after part of Claude's answer was shown.
+                // A cut-off text must not stay in the box, where Copy would take it as complete,
+                // and the language of an older translation must not steer the swap button.
+                if (_partialShown)
+                {
+                    TgtBox.Clear();
+                    _detected     = null;
+                    _partialShown = false;
+                }
+            }
+        }
+    }
+
+    /// <summary>Stops everything that runs in the background, for when the app exits.</summary>
+    public void StopBackgroundWork()
+    {
+        CancelRunningTranslation();
+        _claudeSession.Dispose();
+    }
+
+    /// <summary>
+    /// Stops the translation that is still running, if any. Its text is outdated, and a Claude
+    /// run would otherwise go on and use up quota. Clearing _lastSrc makes sure the text is
+    /// translated again even if it is changed back to what was being translated.
+    /// </summary>
+    public void CancelRunningTranslation()
+    {
+        if (!_busy) return;
+        _cts.Cancel();
+        _busy    = false;
+        _lastSrc = "";
+        SetStatus(Loc.StatusReady);
     }
 
     // ──────────────────────────────── Event handlers ─────────────────────────────────
@@ -260,6 +352,10 @@ public partial class MainWindow : Window
     void SrcBox_Changed(object s, TextChangedEventArgs e)
     {
         CharCount.Text = $"{SrcBox.Text.Length} / {DeepLApi.MaxChars}";
+        // The running translation is for text that no longer exists, so stop it right away
+        // instead of when the next one starts. Otherwise its result could overwrite the box, and
+        // it would never be stopped when the text gets too short to translate.
+        CancelRunningTranslation();
         // Text over the limit still goes through the debounce, so TranslateAsync can say why
         // nothing is translated.
         _debounce.Stop();
@@ -291,8 +387,18 @@ public partial class MainWindow : Window
     void Engine_Changed(object s, RoutedEventArgs e)
     {
         _nextGen       = NextgenRb.IsChecked == true;
-        _cfg.Engine    = _nextGen ? "nextgen" : "classic";
+        _claude        = ClaudeRb.IsChecked  == true;
+        _cfg.Engine    = _claude ? "claude" : _nextGen ? "nextgen" : "classic";
         _cfg.Save();
+        // Every Claude run takes a few seconds and counts against the subscription's usage
+        // limit, so wait for a longer pause in typing before sending.
+        _debounce.Interval = TimeSpan.FromMilliseconds(_claude ? 1500 : 800);
+        BadgePill.Visibility = !_claude && Badge.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (IsLoaded) SetStatus(_claude || _token != null ? Loc.StatusReady : Loc.StatusNotAuth);
+        // Start Claude Code ahead of time, so the first translation does not wait for it. With
+        // DeepL picked, no Claude process is kept around.
+        if (_claude) _claudeSession.WarmUp(_cfg.ClaudeModel);
+        else         _claudeSession.DropSpare();
         _lastSrc       = "";
         _debounce.Stop();
         _debounce.Start();
@@ -478,13 +584,22 @@ public partial class MainWindow : Window
 
     // ──────────────────────────── Helpers ────────────────────────────────────────────
 
+    // The badge shows the DeepL Pro login, so it is hidden while the Claude engine is picked.
     void SetBadge(string text)
     {
         Badge.Text           = text;
-        BadgePill.Visibility = text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        BadgePill.Visibility = !_claude && text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     void SetStatus(string text) => StatusText.Text = text;
+
+    // Messages about the DeepL login. While the Claude engine is picked they would only confuse,
+    // because Claude needs no DeepL login.
+    void SetAuthStatus(string text)
+    {
+        if (_claude) { if (StatusText.Text == Loc.StatusChecking) SetStatus(Loc.StatusReady); return; }
+        SetStatus(text);
+    }
 
     // Moving or resizing only updates the setting in memory. It is written to disk when the
     // window is hidden or the app exits, instead of on every pixel of a drag.
