@@ -66,6 +66,8 @@
                                  Checked="Engine_Changed"/>
                     <RadioButton x:Name="NextgenRb" Content="Next-gen" Style="{StaticResource SegBtn}"
                                  Checked="Engine_Changed"/>
+                    <RadioButton x:Name="ClaudeRb" Content="Claude" Style="{StaticResource SegBtn}"
+                                 Checked="Engine_Changed"/>
                 </StackPanel>
             </Border>
 

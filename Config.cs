@@ -39,7 +39,10 @@ public class Config
 
     [JsonPropertyName("src_lang")]  public string  SrcLang  { get; set; } = "auto";
     [JsonPropertyName("tgt_lang")]  public string  TgtLang  { get; set; } = "de";
+    // "classic" or "nextgen" for the two DeepL models, or "claude" for the Claude Code engine.
     [JsonPropertyName("engine")]    public string  Engine   { get; set; } = "classic";
+    // The model the Claude engine asks for, as an alias such as "sonnet" or "haiku".
+    [JsonPropertyName("claude_model")] public string ClaudeModel { get; set; } = ClaudeCli.DefaultModel;
     [JsonPropertyName("ui_lang")]   public string  UiLang   { get; set; } = "de";
     [JsonPropertyName("geometry")]  public string? Geometry { get; set; }
 

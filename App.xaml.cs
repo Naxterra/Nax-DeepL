@@ -114,6 +114,8 @@ public partial class App : Application
 
     void ExitApp()
     {
+        // A Claude run would keep going after the app is gone and use up quota.
+        (MainWindow as MainWindow)?.StopBackgroundWork();
         (MainWindow as MainWindow)?.SaveSettings();
         TrayIcon?.Dispose();
         Hotkey?.Dispose();
@@ -123,6 +125,8 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        // Also covers ending the app through Windows sign-out or shutdown, which skips ExitApp.
+        (MainWindow as MainWindow)?.StopBackgroundWork();
         TrayIcon?.Dispose();
         Hotkey?.Dispose();
         base.OnExit(e);

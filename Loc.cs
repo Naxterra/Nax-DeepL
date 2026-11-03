@@ -35,12 +35,19 @@ public static class Loc
     public static string StatusCopied    => En ? "Copied."                                 : "Kopiert.";
     public static string StatusClipboardBusy => En ? "The clipboard is in use by another program. Please try again."
                                                    : "Die Zwischenablage wird von einem anderen Programm benutzt. Bitte noch einmal versuchen.";
-    public static string NoTranslation   => En ? "DeepL sent no translation."              : "Keine Übersetzung erhalten.";
+    public static string NoTranslation   => En ? "No translation received."                : "Keine Übersetzung erhalten.";
+    public static string StatusClaudeBusy => En ? "Claude is busy right now (too many requests). Please try again in a moment."
+                                                : "Claude ist gerade ausgelastet (zu viele Anfragen). Bitte gleich noch einmal versuchen.";
     public static string StatusLimitReached => En ? "DeepL is not accepting more translations right now because a usage limit was reached. Please try again later."
                                                   : "DeepL nimmt gerade keine weiteren Übersetzungen an, weil ein Nutzungslimit erreicht ist. Bitte später noch einmal versuchen.";
+    public static string StatusClaudeLimit(string detail) =>
+        En ? $"Claude is not accepting more requests right now because your subscription's usage limit was reached ({detail})."
+           : $"Claude nimmt gerade keine weiteren Anfragen an, weil das Nutzungslimit deines Abos erreicht ist ({detail}).";
+    public static string StatusClaudeNotFound => En ? "Claude Code is not installed. Install it with \"winget install Anthropic.ClaudeCode\" and sign in once by running \"claude\"."
+                                                    : "Claude Code ist nicht installiert. Mit „winget install Anthropic.ClaudeCode“ installieren und einmal „claude“ starten, um dich anzumelden.";
     public static string StatusTooLong(int length) =>
-        En ? $"The text has {length} characters and was not sent to DeepL. Please shorten it to {DeepLApi.MaxChars}."
-           : $"Der Text hat {length} Zeichen und wurde nicht an DeepL geschickt. Bitte auf {DeepLApi.MaxChars} kürzen.";
+        En ? $"The text has {length} characters and was not sent. Please shorten it to {DeepLApi.MaxChars}."
+           : $"Der Text hat {length} Zeichen und wurde nicht verschickt. Bitte auf {DeepLApi.MaxChars} kürzen.";
     public static string StatusTranslating => En ? "Translating…"                          : "Übersetze…";
     public static string StatusError     => En ? "Error: "                                 : "Fehler: ";
     public static string StatusOffline   => En ? "No connection to DeepL. Retrying automatically…"
@@ -49,8 +56,12 @@ public static class Loc
     public static string MenuStartup      => En ? "Start with Windows"                      : "Mit Windows starten";
     public static string MenuAbout        => En ? "About"                                   : "Über";
 
-    public static string StatusTranslated(string? lang) =>
-        lang != null
-            ? (En ? $"Translated (detected: {lang})" : $"Übersetzt (erkannt: {lang})")
-            : (En ? "Translated" : "Übersetzt");
+    public static string StatusTranslated(string? lang, string engine, TimeSpan took)
+    {
+        var secs = took.TotalSeconds.ToString("0.0", En ? System.Globalization.CultureInfo.InvariantCulture
+                                                        : System.Globalization.CultureInfo.GetCultureInfo("de-DE"));
+        return lang != null
+            ? (En ? $"Translated by {engine} in {secs} s (detected: {lang})" : $"Übersetzt mit {engine} in {secs} s (erkannt: {lang})")
+            : (En ? $"Translated by {engine} in {secs} s" : $"Übersetzt mit {engine} in {secs} s");
+    }
 }
