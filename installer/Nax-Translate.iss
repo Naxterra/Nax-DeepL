@@ -83,6 +83,7 @@ const
 
 var
   OldInstallDir: String;
+  OldUninstaller: String;
 
 function DesktopRuntimeInstalled: Boolean;
 var
@@ -95,10 +96,16 @@ end;
 
 function InitializeSetup: Boolean;
 begin
-  // Where the installed version lives, read before this setup replaces the uninstall entry.
+  // Where the installed version lives and which uninstaller it uses, read before this setup
+  // replaces the uninstall entry. In a folder shared with other programs the uninstaller is not
+  // always unins000, because Inno Setup picks the next free number.
   if not RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{AB237F8A-B239-458C-BFC9-625A415608D7}_is1',
                              'InstallLocation', OldInstallDir) then
     OldInstallDir := '';
+  if not RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{AB237F8A-B239-458C-BFC9-625A415608D7}_is1',
+                             'UninstallString', OldUninstaller) then
+    OldUninstaller := '';
+  OldUninstaller := RemoveQuotes(OldUninstaller);
   Result := DesktopRuntimeInstalled or
     (SuppressibleMsgBox(CustomMessage('RuntimeMissing'), mbConfirmation, MB_YESNO, IDNO) = IDYES);
 end;
@@ -119,13 +126,18 @@ end;
 procedure MoveStartEntry;
 var
   Old: String;
+  Found: Boolean;
 begin
-  // A "Start with Windows" entry of the old name points at Nax-DeepL.exe, which is removed below.
-  // It is moved here, because after a silent update nobody starts the new app to move it.
-  if RegQueryStringValue(HKCU, RunKey, '{#OldName}', Old) then
+  // A "Start with Windows" entry of an old name ("Nax-DeepL" up to 1.1.x, "DeepL-Translator"
+  // before that, the same names as StartupHelper.LegacyNames) points at a program file that no
+  // longer runs. It is moved here, because after a silent update nobody starts the new app to move it.
+  Found := RegQueryStringValue(HKCU, RunKey, '{#OldName}', Old);
+  Found := RegQueryStringValue(HKCU, RunKey, 'DeepL-Translator', Old) or Found;
+  if Found then
   begin
     RegWriteStringValue(HKCU, RunKey, '{#AppName}', '"' + ExpandConstant('{app}\{#AppExe}') + '"');
     RegDeleteValue(HKCU, RunKey, '{#OldName}');
+    RegDeleteValue(HKCU, RunKey, 'DeepL-Translator');
   end;
 end;
 
@@ -146,10 +158,15 @@ begin
   DeleteFile(OldDir + '\{#OldName}.pdb');
   if CompareText(OldDir, RemoveBackslash(ExpandConstant('{app}'))) <> 0 then
   begin
-    // The new uninstaller lives in the new folder, so the old one is no longer used.
-    DeleteFile(OldDir + '\unins000.exe');
-    DeleteFile(OldDir + '\unins000.dat');
-    DeleteFile(OldDir + '\unins000.msg');
+    // The new uninstaller lives in the new folder, so the old one is no longer used. Only the one
+    // named in the old uninstall entry is deleted, and only when it sits in the old folder, so
+    // another program's uninstaller in a shared folder is never touched.
+    if (OldUninstaller <> '') and (CompareText(RemoveBackslash(ExtractFileDir(OldUninstaller)), OldDir) = 0) then
+    begin
+      DeleteFile(OldUninstaller);
+      DeleteFile(ChangeFileExt(OldUninstaller, '.dat'));
+      DeleteFile(ChangeFileExt(OldUninstaller, '.msg'));
+    end;
     RemoveDir(OldDir);
   end;
 end;
