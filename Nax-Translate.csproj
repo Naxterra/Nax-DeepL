@@ -8,11 +8,11 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationIcon>icon.ico</ApplicationIcon>
-    <RootNamespace>NaxDeepL</RootNamespace>
-    <AssemblyName>Nax-DeepL</AssemblyName>
-    <Product>Nax-DeepL</Product>
-    <Description>DeepL Pro desktop client for Windows</Description>
-    <Version>1.1.0</Version>
+    <RootNamespace>NaxTranslate</RootNamespace>
+    <AssemblyName>Nax-Translate</AssemblyName>
+    <Product>Nax-Translate</Product>
+    <Description>Desktop translator for Windows with DeepL Pro and Claude</Description>
+    <Version>1.2.0</Version>
     <Optimize>true</Optimize>
   </PropertyGroup>
 
@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="Nax-DeepL.Tests" />
+    <InternalsVisibleTo Include="Nax-Translate.Tests" />
   </ItemGroup>
 
   <ItemGroup>

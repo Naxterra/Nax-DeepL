@@ -1,4 +1,4 @@
-namespace NaxDeepL.Tests;
+namespace NaxTranslate.Tests;
 
 /// <summary>Guards against the app using up the DeepL character quota without the user noticing.</summary>
 public class QuotaSafetyTests

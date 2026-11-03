@@ -1,4 +1,4 @@
-namespace NaxDeepL.Tests;
+namespace NaxTranslate.Tests;
 
 public class AutoTargetTests
 {

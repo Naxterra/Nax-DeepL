@@ -7,7 +7,7 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <IsPackable>false</IsPackable>
-    <RootNamespace>NaxDeepL.Tests</RootNamespace>
+    <RootNamespace>NaxTranslate.Tests</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Nax-DeepL.csproj" />
+    <ProjectReference Include="..\..\Nax-Translate.csproj" />
   </ItemGroup>
 
 </Project>

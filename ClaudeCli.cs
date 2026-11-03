@@ -5,7 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace NaxDeepL;
+namespace NaxTranslate;
 
 /// <summary>Claude refuses more requests for now because the subscription's usage limit was reached.</summary>
 public sealed class ClaudeLimitReachedException(string message) : Exception(message);

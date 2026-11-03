@@ -1,10 +1,10 @@
 using System.IO;
 
-namespace NaxDeepL.Tests;
+namespace NaxTranslate.Tests;
 
 public sealed class ConfigTests : IDisposable
 {
-    readonly string _dir  = Path.Combine(Path.GetTempPath(), "NaxDeepL.Tests", Guid.NewGuid().ToString("N"));
+    readonly string _dir  = Path.Combine(Path.GetTempPath(), "NaxTranslate.Tests", Guid.NewGuid().ToString("N"));
     string ConfigPath => Path.Combine(_dir, "config.json");
 
     public void Dispose()
@@ -97,7 +97,7 @@ public sealed class ConfigTests : IDisposable
     public void settings_of_old_app_name_moved_with_login_intact()
     {
         var oldDir = Path.Combine(_dir, "DeepL-Translator");
-        var newDir = Path.Combine(_dir, "Nax-DeepL");
+        var newDir = Path.Combine(_dir, "Nax-Translate");
         var old = Config.Load(Path.Combine(oldDir, "config.json"));
         old.RefreshToken = "refresh-secret-456";
         old.TgtLang = "tr";
@@ -115,7 +115,7 @@ public sealed class ConfigTests : IDisposable
     public void settings_of_old_app_name_never_replace_existing_new_settings()
     {
         var oldDir = Path.Combine(_dir, "DeepL-Translator");
-        var newDir = Path.Combine(_dir, "Nax-DeepL");
+        var newDir = Path.Combine(_dir, "Nax-Translate");
         var old = Config.Load(Path.Combine(oldDir, "config.json"));
         old.TgtLang = "tr";
         old.Save();
@@ -127,5 +127,28 @@ public sealed class ConfigTests : IDisposable
 
         Assert.True(Directory.Exists(oldDir));
         Assert.Equal("en-US", Config.Load(Path.Combine(newDir, "config.json")).TgtLang);
+    }
+
+    [Fact]
+    public void settings_of_nax_deepl_moved_before_older_settings_and_older_left_alone()
+    {
+        var olderDir = Path.Combine(_dir, "DeepL-Translator");
+        var oldDir   = Path.Combine(_dir, "Nax-DeepL");
+        var newDir   = Path.Combine(_dir, "Nax-Translate");
+        var older = Config.Load(Path.Combine(olderDir, "config.json"));
+        older.TgtLang = "tr";
+        older.Save();
+        var old = Config.Load(Path.Combine(oldDir, "config.json"));
+        old.RefreshToken = "refresh-secret-789";
+        old.Engine = "claude";
+        old.Save();
+
+        Config.MoveLegacyFolders([oldDir, olderDir], newDir);
+
+        Assert.False(Directory.Exists(oldDir));
+        Assert.True(Directory.Exists(olderDir), "the older folder must not be moved onto the new one");
+        var moved = Config.Load(Path.Combine(newDir, "config.json"));
+        Assert.Equal("refresh-secret-789", moved.RefreshToken);
+        Assert.Equal("claude", moved.Engine);
     }
 }

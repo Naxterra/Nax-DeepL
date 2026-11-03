@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace NaxDeepL.Tests;
+namespace NaxTranslate.Tests;
 
 /// <summary>Covers the Claude engine without starting the real Claude Code tool.</summary>
 public class ClaudeCliTests

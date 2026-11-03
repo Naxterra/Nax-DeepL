@@ -1,6 +1,6 @@
 using Microsoft.Win32;
 
-namespace NaxDeepL;
+namespace NaxTranslate;
 
 /// <summary>
 /// Temporarily points the deepl:// link handler at this app during login and puts the previous
@@ -19,14 +19,17 @@ public sealed class SchemeHandlerGuard(RegistryKey root, string schemeKeyPath, s
     const string UrlProtocol = "URL Protocol";
 
     public static SchemeHandlerGuard ForCurrentUser() => new(
-        Registry.CurrentUser, @"Software\Classes\deepl", @"Software\Nax-DeepL\LoginBackup");
+        Registry.CurrentUser, @"Software\Classes\deepl", @"Software\Nax-Translate\LoginBackup");
 
     /// <summary>
-    /// The guard with the backup key of versions up to 1.1.0, so that a login those versions
-    /// left unfinished is still undone.
+    /// The guards with the backup keys of older versions ("Nax-DeepL" up to 1.1.x and
+    /// "DeepL-Translator" before that), so that a login those versions left unfinished is still undone.
     /// </summary>
-    public static SchemeHandlerGuard LegacyForCurrentUser() => new(
-        Registry.CurrentUser, @"Software\Classes\deepl", @"Software\DeepL-Translator\LoginBackup");
+    public static SchemeHandlerGuard[] LegacyForCurrentUser() =>
+    [
+        new(Registry.CurrentUser, @"Software\Classes\deepl", @"Software\Nax-DeepL\LoginBackup"),
+        new(Registry.CurrentUser, @"Software\Classes\deepl", @"Software\DeepL-Translator\LoginBackup"),
+    ];
 
     string CommandKeyPath => $@"{schemeKeyPath}\{CommandSubKey}";
 

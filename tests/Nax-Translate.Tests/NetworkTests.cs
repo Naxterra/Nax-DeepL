@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 
-namespace NaxDeepL.Tests;
+namespace NaxTranslate.Tests;
 
 public class NetworkTests
 {

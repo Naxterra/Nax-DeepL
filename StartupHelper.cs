@@ -1,14 +1,15 @@
 using Microsoft.Win32;
 
-namespace NaxDeepL;
+namespace NaxTranslate;
 
 public static class StartupHelper
 {
     const string RunKey  = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    const string AppName = "Nax-DeepL";
+    const string AppName = "Nax-Translate";
 
-    // Versions up to 1.1.0 registered themselves under this name.
-    const string LegacyName = "DeepL-Translator";
+    // Older versions registered themselves under these names: "Nax-DeepL" up to 1.1.x and
+    // "DeepL-Translator" before that.
+    static readonly string[] LegacyNames = ["Nax-DeepL", "DeepL-Translator"];
 
     static string ExePath => Environment.ProcessPath
                              ?? System.Diagnostics.Process.GetCurrentProcess().MainModule!.FileName;
@@ -37,14 +38,15 @@ public static class StartupHelper
             key.SetValue(AppName, $"\"{exe}\"");
         else
             key.DeleteValue(AppName, throwOnMissingValue: false);
-        key.DeleteValue(LegacyName, throwOnMissingValue: false);
+        foreach (var legacy in LegacyNames)
+            key.DeleteValue(legacy, throwOnMissingValue: false);
     }
 
     internal static void MoveLegacyEntry(string exe, RegistryKey root, string runKeyPath)
     {
         bool hasLegacy;
         using (var key = root.OpenSubKey(runKeyPath))
-            hasLegacy = key?.GetValue(LegacyName) != null;
+            hasLegacy = LegacyNames.Any(n => key?.GetValue(n) != null);
         if (hasLegacy) SetEnabled(true, exe, root, runKeyPath);
     }
 }

@@ -4,16 +4,18 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace NaxDeepL;
+namespace NaxTranslate;
 
 public class Config
 {
     static readonly string AppData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-    static readonly string DefaultDir = Path.Combine(AppData, "Nax-DeepL");
+    static readonly string DefaultDir = Path.Combine(AppData, "Nax-Translate");
     static readonly string DefaultPath = Path.Combine(DefaultDir, "config.json");
 
-    // Versions up to 1.1.0 kept their settings in this folder. It is moved once to the new name.
-    static readonly string LegacyDir = Path.Combine(AppData, "DeepL-Translator");
+    // Older versions kept their settings in these folders, newest first: "Nax-DeepL" up to 1.1.x
+    // and "DeepL-Translator" before that. The newest one that exists is moved once to the new name.
+    static readonly string[] LegacyDirs =
+        [Path.Combine(AppData, "Nax-DeepL"), Path.Combine(AppData, "DeepL-Translator")];
 
     [JsonIgnore] string FilePath { get; set; } = DefaultPath;
 
@@ -48,7 +50,7 @@ public class Config
 
     public static Config Load(string? path = null)
     {
-        if (path == null) MoveLegacyFolder(LegacyDir, DefaultDir);
+        if (path == null) MoveLegacyFolders(LegacyDirs, DefaultDir);
         path ??= DefaultPath;
         Config cfg;
         try
@@ -78,6 +80,15 @@ public class Config
     /// exist under the current name are never replaced. If the move fails, the old folder stays
     /// untouched and the app starts with default settings.
     /// </summary>
+    /// <summary>
+    /// Moves the first of the given old folders that exists, newest name first. A folder is never
+    /// moved onto one that exists, so after the first move the older folders are left alone.
+    /// </summary>
+    internal static void MoveLegacyFolders(IEnumerable<string> legacyDirs, string newDir)
+    {
+        foreach (var legacy in legacyDirs) MoveLegacyFolder(legacy, newDir);
+    }
+
     internal static void MoveLegacyFolder(string legacyDir, string newDir)
     {
         try

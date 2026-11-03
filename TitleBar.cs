@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 
-namespace NaxDeepL;
+namespace NaxTranslate;
 
 /// <summary>
 /// Paints the Windows title bar and window border in the window's own black, so the title bar

@@ -5,11 +5,11 @@ using System.Windows;
 using Application = System.Windows.Application;
 using Forms = System.Windows.Forms;
 
-namespace NaxDeepL;
+namespace NaxTranslate;
 
 public partial class App : Application
 {
-    const string PipeName = "Nax-DeepL-Auth";
+    const string PipeName = "Nax-Translate-Auth";
 
     static Mutex?              _mutex;
     internal Forms.NotifyIcon? TrayIcon;
@@ -45,7 +45,7 @@ public partial class App : Application
         }
 
         // Single instance guard
-        _mutex = new Mutex(true, "Nax-DeepL-7F3A", out bool first);
+        _mutex = new Mutex(true, "Nax-Translate-7F3A", out bool first);
         if (!first) { Shutdown(); return; }
 
         // Undo the deepl:// handler change of a login that a crash cut short, then start

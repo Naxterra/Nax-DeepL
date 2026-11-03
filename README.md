@@ -1,6 +1,6 @@
-# Nax-DeepL
+# Nax-Translate
 
-Nax-DeepL is a fast, lightweight Windows desktop translator for your **DeepL Pro** subscription. It starts quickly, stays small in the tray and keeps working when your network changes.
+Nax-Translate is a fast, lightweight Windows desktop translator that works with your **DeepL Pro** subscription or your **Claude** subscription. It was called Nax-DeepL before version 1.2.0. It starts quickly, stays small in the tray and keeps working when your network changes.
 
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-blue)
 ![.NET](https://img.shields.io/badge/.NET-11-purple)
@@ -30,19 +30,19 @@ Nax-DeepL is a fast, lightweight Windows desktop translator for your **DeepL Pro
 
 With **Claude** picked in the title bar, the app sends the text to the installed Claude Code tool (`claude -p`) instead of DeepL. It needs no DeepL login and no API key, because it uses the subscription you are signed in with in Claude Code. An `ANTHROPIC_API_KEY` or similar variable in your environment is not passed on, so translations are never billed to an API key. Each translation counts against that subscription's usage limit. The translation appears word by word as it arrives. While Claude is picked, the app keeps one Claude Code process started and waiting, so a translation does not wait for the tool to start. A waiting process sends nothing and uses no quota, but it takes about 200 MB of memory. Every process handles exactly one translation and then ends, so no translation sees an earlier text. The waiting process is ended when you pick DeepL again or quit the app. The app waits for a longer pause in typing before it sends, and it stops a request at once when newer text is typed.
 
-Claude Code runs in safe mode for these requests, so your own hooks, plugins, CLAUDE.md files and MCP servers are not loaded, no tools are offered and no session is saved. The model is Sonnet by default. To use another one, set `"claude_model"` in `%APPDATA%\Nax-DeepL\config.json` to an alias such as `"haiku"`.
+Claude Code runs in safe mode for these requests, so your own hooks, plugins, CLAUDE.md files and MCP servers are not loaded, no tools are offered and no session is saved. The model is Sonnet by default. To use another one, set `"claude_model"` in `%APPDATA%\Nax-Translate\config.json` to an alias such as `"haiku"`.
 
 ## Installation
 
-1. Download `Nax-DeepL-<version>-setup.exe` from the [latest release](https://github.com/Naxterra/Nax-DeepL/releases/latest).
-2. Run it. It installs for your Windows user only, into `%LOCALAPPDATA%\Programs\Nax-DeepL`, so no administrator rights are needed. It adds a Start menu entry and, if you choose, a desktop shortcut.
+1. Download `Nax-Translate-<version>-setup.exe` from the [latest release](https://github.com/Naxterra/Nax-Translate/releases/latest).
+2. Run it. It installs for your Windows user only, into `%LOCALAPPDATA%\Programs\Nax-Translate`, so no administrator rights are needed. It adds a Start menu entry and, if you choose, a desktop shortcut.
 3. Click **⚙ Verbindung → Anmelden** to sign in. This opens the DeepL login in your browser.
 
 After the first login the session is saved, and later starts connect automatically.
 
 To uninstall, use **Settings → Apps → Installed apps**. The uninstaller removes the "Start with Windows" entry and asks whether to delete your settings and the saved login as well.
 
-Settings from the earlier name "Better DeepL Translator" are taken over automatically on the first start, including the login.
+An installed Nax-DeepL is updated in place: the setup moves the program to the new folder and replaces the old shortcuts. Settings from the earlier names "Nax-DeepL" and "Better DeepL Translator" are taken over automatically on the first start, including the login and the "Start with Windows" entry.
 
 ## Usage
 
@@ -59,9 +59,9 @@ Settings from the earlier name "Better DeepL Translator" are taken over automati
 ## Building from source
 
 ```
-git clone https://github.com/Naxterra/Nax-DeepL.git
-cd Nax-DeepL
-dotnet publish Nax-DeepL.csproj -c Release -r win-x64 --no-self-contained -o dist
+git clone https://github.com/Naxterra/Nax-Translate.git
+cd Nax-Translate
+dotnet publish Nax-Translate.csproj -c Release -r win-x64 --no-self-contained -o dist
 ```
 
 Run the tests with `dotnet test`. Building requires the .NET 11 SDK.

@@ -7,7 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
-namespace NaxDeepL;
+namespace NaxTranslate;
 
 public static class AuthManager
 {
@@ -135,7 +135,8 @@ public static class AuthManager
     /// <summary>Undoes the deepl:// handler change of a login that was cut short by a crash.</summary>
     public static void RestoreLeftoverSchemeHandler()
     {
-        try { SchemeHandlerGuard.LegacyForCurrentUser().RestoreLeftover(); } catch { }
+        foreach (var legacy in SchemeHandlerGuard.LegacyForCurrentUser())
+            try { legacy.RestoreLeftover(); } catch { }
         try { Scheme.RestoreLeftover(); } catch { }
     }
 

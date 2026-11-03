@@ -1,6 +1,0 @@
-<Solution>
-  <Folder Name="/tests/">
-    <Project Path="tests/Nax-DeepL.Tests/Nax-DeepL.Tests.csproj" />
-  </Folder>
-  <Project Path="Nax-DeepL.csproj" />
-</Solution>
