@@ -82,6 +82,10 @@
                         <Separator/>
                         <MenuItem x:Name="MenuItemStartup" Header="Mit Windows starten"
                                   IsCheckable="True" Click="Startup_Click"/>
+                        <MenuItem x:Name="MenuItemStartInTray" Header="Im Infobereich starten"
+                                  IsCheckable="True" Click="StartInTray_Click"/>
+                        <MenuItem x:Name="MenuItemMinimizeToTray" Header="In den Infobereich minimieren"
+                                  IsCheckable="True" Click="MinimizeToTray_Click"/>
                         <Separator/>
                         <MenuItem x:Name="MenuItemAbout" Header="Über" Click="About_Click"/>
                     </ContextMenu>

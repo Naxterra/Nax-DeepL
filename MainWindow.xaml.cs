@@ -101,9 +101,12 @@ public partial class MainWindow : Window
 
         // Reflect current startup registry state
         MenuItemStartup.IsChecked = StartupHelper.IsEnabled();
+        MenuItemStartInTray.IsChecked    = _cfg.StartInTray;
+        MenuItemMinimizeToTray.IsChecked = _cfg.MinimizeToTray;
 
         Loaded          += OnLoaded;
         Closing         += OnClosing;
+        StateChanged    += OnStateChanged;
         SizeChanged     += (_, _) => RememberGeometry();
         LocationChanged += (_, _) => RememberGeometry();
     }
@@ -117,12 +120,51 @@ public partial class MainWindow : Window
         TitleBar.Apply(this);
     }
 
-    async void OnLoaded(object s, RoutedEventArgs e)
+    /// <summary>Whether the app should start with this window hidden in the tray.</summary>
+    public bool StartsInTray => _cfg.StartInTray;
+
+    async void OnLoaded(object s, RoutedEventArgs e) => await RunStartupChecksAsync();
+
+    /// <summary>
+    /// Called instead of showing the window when the app starts in the tray. The window's Loaded
+    /// event only comes once it is shown, so the startup checks are started here, and Ctrl+C+C
+    /// finds a fresh login right away.
+    /// </summary>
+    public void StartHidden() => _ = RunStartupChecksAsync();
+
+    bool _startupChecksStarted;
+
+    async Task RunStartupChecksAsync()
     {
+        // Runs once, whether the window was shown at start or only later.
+        if (_startupChecksStarted) return;
+        _startupChecksStarted = true;
         await RefreshTokenAsync();
         // With Claude picked and connected, check the Claude Code sign-in once, so the badge shows
         // the plan and a missing sign-in is reported before the first translation.
         if (_claude && _cfg.ClaudeConnected) await CheckClaudeAsync(quiet: true);
+    }
+
+    // Minimizing hides the window to the tray when that option is on, so it leaves the taskbar.
+    void OnStateChanged(object? s, EventArgs e)
+    {
+        if (WindowState == WindowState.Minimized && _cfg.MinimizeToTray)
+        {
+            SaveSettings();
+            Hide();
+        }
+    }
+
+    void StartInTray_Click(object s, RoutedEventArgs e)
+    {
+        _cfg.StartInTray = MenuItemStartInTray.IsChecked;
+        _cfg.Save();
+    }
+
+    void MinimizeToTray_Click(object s, RoutedEventArgs e)
+    {
+        _cfg.MinimizeToTray = MenuItemMinimizeToTray.IsChecked;
+        _cfg.Save();
     }
 
     /// <summary>
@@ -662,6 +704,8 @@ public partial class MainWindow : Window
         MenuItemClaudeConnect.Header    = Loc.MenuClaudeConnect;
         MenuItemClaudeDisconnect.Header = Loc.MenuClaudeDisconnect;
         MenuItemStartup.Header  = Loc.MenuStartup;
+        MenuItemStartInTray.Header    = Loc.MenuStartInTray;
+        MenuItemMinimizeToTray.Header = Loc.MenuMinimizeToTray;
         MenuItemAbout.Header    = Loc.MenuAbout;
         ToneNaturalRb.Content   = Loc.ToneNatural;
         ToneFormalRb.Content    = Loc.ToneFormal;

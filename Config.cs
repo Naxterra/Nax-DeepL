@@ -50,6 +50,10 @@ public class Config
     // Whether Claude is connected. While it is not, nothing is sent to Claude and no Claude Code
     // process is kept waiting.
     [JsonPropertyName("claude_connected")] public bool ClaudeConnected { get; set; } = true;
+    // Whether the app starts with its window hidden, showing only the tray icon.
+    [JsonPropertyName("start_in_tray")]    public bool StartInTray     { get; set; } = true;
+    // Whether minimizing the window hides it to the tray instead of the taskbar.
+    [JsonPropertyName("minimize_to_tray")] public bool MinimizeToTray  { get; set; } = true;
     [JsonPropertyName("ui_lang")]   public string  UiLang   { get; set; } = "de";
     [JsonPropertyName("geometry")]  public string? Geometry { get; set; }
 

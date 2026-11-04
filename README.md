@@ -15,7 +15,7 @@ Nax-Translate is a fast, lightweight Windows desktop translator that works with 
 - **Automatic target language:** when the text is already in the target language, German switches to English (US) and every other language switches to German.
 - **Classic, Next-gen or Claude:** a toggle in the title bar picks the DeepL model, or translates with Claude through your own Claude subscription instead of DeepL. The status line shows which engine translated and how long it took.
 - **Language swap:** one click flips source and target.
-- **System tray:** the window hides to the tray and is one click away.
+- **System tray:** the app starts in the tray with its window hidden, minimizing and closing the window hide it to the tray, and one click on the tray icon opens it again. Starting the app a second time opens the window of the running one. Both "Im Infobereich starten" (start in the tray) and "In den Infobereich minimieren" (minimize to the tray) can be switched off in the ⚙ Verbindung menu.
 - **Start with Windows:** an optional entry starts the app when you sign in to Windows.
 - **German and English interface** with a dark theme.
 

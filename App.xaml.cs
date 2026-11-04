@@ -11,6 +11,19 @@ public partial class App : Application
 {
     const string PipeName = "Nax-Translate-Auth";
 
+    /// <summary>
+    /// What a second start of the app sends to the running one, so that it shows its window. With
+    /// the window hidden in the tray, starting the app again would otherwise seem to do nothing.
+    /// </summary>
+    internal const string ShowCommand = "nax-translate:show";
+
+    /// <summary>The switch that opens the window even when the app normally starts in the tray.</summary>
+    internal const string ShowSwitch = "--show";
+
+    /// <summary>Whether this start keeps the window hidden and shows only the tray icon.</summary>
+    internal static bool ShouldStartHidden(bool startInTray, string[] args) =>
+        startInTray && !args.Any(a => string.Equals(a, ShowSwitch, StringComparison.OrdinalIgnoreCase));
+
     static Mutex?              _mutex;
     internal Forms.NotifyIcon? TrayIcon;
     internal HotkeyManager?   Hotkey;
@@ -22,14 +35,7 @@ public partial class App : Application
         // If launched with a deepl:// callback URL, forward it to the running instance
         if (e.Args.Length > 0 && e.Args[0].StartsWith("deepl://", StringComparison.OrdinalIgnoreCase))
         {
-            try
-            {
-                using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.Out);
-                client.Connect(2000);
-                using var w = new StreamWriter(client) { AutoFlush = true };
-                w.Write(e.Args[0]);
-            }
-            catch { }
+            SendToRunningApp(e.Args[0]);
             Shutdown();
             return;
         }
@@ -44,9 +50,14 @@ public partial class App : Application
             return;
         }
 
-        // Single instance guard
+        // Single instance guard. A second start asks the running app to show its window and ends.
         _mutex = new Mutex(true, "Nax-Translate-7F3A", out bool first);
-        if (!first) { Shutdown(); return; }
+        if (!first)
+        {
+            SendToRunningApp(ShowCommand);
+            Shutdown();
+            return;
+        }
 
         // Undo the deepl:// handler change of a login that a crash cut short, then start
         // replacing dead connections whenever Windows reports a network change.
@@ -69,18 +80,34 @@ public partial class App : Application
             Visible = true,
         };
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add(Loc.AppTitle,              null, (_, _) => ShowMain());
+        menu.Items.Add(Loc.TrayOpen, null, (_, _) => ShowMain());
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add("Beenden",           null, (_, _) => ExitApp());
-        TrayIcon.ContextMenuStrip  = menu;
-        TrayIcon.DoubleClick      += (_, _) => ShowMain();
+        menu.Items.Add(Loc.TrayExit, null, (_, _) => ExitApp());
+        TrayIcon.ContextMenuStrip = menu;
+        // One click with the left button opens the window, as with other tray apps on Windows 11.
+        TrayIcon.MouseClick += (_, me) => { if (me.Button == Forms.MouseButtons.Left) ShowMain(); };
 
         // Global Ctrl+C+C hotkey
         Hotkey = new HotkeyManager();
         Hotkey.CtrlCCPressed += () => ((MainWindow?)MainWindow)?.OnCtrlCC();
 
+        // The app starts in the tray unless that option is off or it was started with --show,
+        // which the installer uses so that "Launch" after setup opens the window.
         var win = new MainWindow();
-        win.Show();
+        if (ShouldStartHidden(win.StartsInTray, e.Args)) win.StartHidden();
+        else                                            win.Show();
+    }
+
+    static void SendToRunningApp(string message)
+    {
+        try
+        {
+            using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.Out);
+            client.Connect(2000);
+            using var w = new StreamWriter(client) { AutoFlush = true };
+            w.Write(message);
+        }
+        catch { }
     }
 
     async Task ListenForCallbacks()
@@ -94,9 +121,11 @@ public partial class App : Application
                     options: PipeOptions.Asynchronous);
                 await server.WaitForConnectionAsync();
                 using var reader = new StreamReader(server);
-                var url = await reader.ReadToEndAsync();
-                if (!string.IsNullOrWhiteSpace(url))
-                    Dispatcher.Invoke(() => AuthManager.HandleCallback(url));
+                var message = (await reader.ReadToEndAsync()).Trim();
+                if (message == ShowCommand)
+                    Dispatcher.Invoke(ShowMain);
+                else if (message.Length > 0)
+                    Dispatcher.Invoke(() => AuthManager.HandleCallback(message));
             }
             catch { await Task.Delay(500); }
         }

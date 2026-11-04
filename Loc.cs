@@ -78,6 +78,10 @@ public static class Loc
 
     public static string MenuStartup      => En ? "Start with Windows"                      : "Mit Windows starten";
     public static string MenuAbout        => En ? "About"                                   : "Über";
+    public static string MenuStartInTray  => En ? "Start in the tray"                       : "Im Infobereich starten";
+    public static string MenuMinimizeToTray => En ? "Minimize to the tray"                  : "In den Infobereich minimieren";
+    public static string TrayOpen         => En ? "Open"                                    : "Öffnen";
+    public static string TrayExit         => En ? "Exit"                                    : "Beenden";
 
     public static string StatusTranslated(string? lang, string engine, TimeSpan took)
     {
