@@ -9,7 +9,10 @@ namespace NaxTranslate;
 
 public partial class App : Application
 {
-    const string PipeName = "Nax-Translate-Auth";
+    // Named pipes are visible across all Windows sessions, while the single-instance mutex is per
+    // session. With the session number in the name, a login link or a "show" request of one user
+    // never reaches the app of another user who is signed in at the same time.
+    static readonly string PipeName = $"Nax-Translate-Auth-{System.Diagnostics.Process.GetCurrentProcess().SessionId}";
 
     /// <summary>
     /// What a second start of the app sends to the running one, so that it shows its window. With
@@ -22,7 +25,18 @@ public partial class App : Application
 
     /// <summary>Whether this start keeps the window hidden and shows only the tray icon.</summary>
     internal static bool ShouldStartHidden(bool startInTray, string[] args) =>
-        startInTray && !args.Any(a => string.Equals(a, ShowSwitch, StringComparison.OrdinalIgnoreCase));
+        startInTray && !HasSwitch(args, ShowSwitch);
+
+    /// <summary>
+    /// Whether a hidden start shows a short note that the app runs in the tray. A start by hand
+    /// gets the note, because Windows 11 often keeps new tray icons out of sight and the start would
+    /// otherwise seem to do nothing. The start at sign-in, which carries --autostart, stays quiet.
+    /// </summary>
+    internal static bool ShouldNotifyTrayStart(bool startsHidden, string[] args) =>
+        startsHidden && !HasSwitch(args, StartupHelper.AutostartSwitch);
+
+    static bool HasSwitch(string[] args, string name) =>
+        args.Any(a => string.Equals(a, name, StringComparison.OrdinalIgnoreCase));
 
     static Mutex?              _mutex;
     internal Forms.NotifyIcon? TrayIcon;
@@ -64,8 +78,14 @@ public partial class App : Application
         AuthManager.RestoreLeftoverSchemeHandler();
         Net.WatchNetworkChanges();
 
-        // A "Start with Windows" entry from before the rename points at the old program file.
-        try { StartupHelper.MoveLegacyEntry(); } catch { }
+        // A "Start with Windows" entry from before the rename points at the old program file, and
+        // one from before 1.2.0 lacks --autostart. Writing it again fixes both.
+        try
+        {
+            StartupHelper.MoveLegacyEntry();
+            if (StartupHelper.IsEnabled()) StartupHelper.SetEnabled(true);
+        }
+        catch { }
 
         // Listen for OAuth callbacks from second instances
         _ = Task.Run(ListenForCallbacks);
@@ -94,8 +114,16 @@ public partial class App : Application
         // The app starts in the tray unless that option is off or it was started with --show,
         // which the installer uses so that "Launch" after setup opens the window.
         var win = new MainWindow();
-        if (ShouldStartHidden(win.StartsInTray, e.Args)) win.StartHidden();
-        else                                            win.Show();
+        var hidden = ShouldStartHidden(win.StartsInTray, e.Args);
+        if (hidden) win.StartHidden();
+        else        win.Show();
+        if (ShouldNotifyTrayStart(hidden, e.Args))
+        {
+            // Shown as a Windows notification, which stays visible even when the tray icon itself
+            // is in the hidden overflow area. Clicking it opens the window.
+            TrayIcon.BalloonTipClicked += (_, _) => ShowMain();
+            TrayIcon.ShowBalloonTip(5000, Loc.AppTitle, Loc.TrayStartedHint, Forms.ToolTipIcon.None);
+        }
     }
 
     static void SendToRunningApp(string message)

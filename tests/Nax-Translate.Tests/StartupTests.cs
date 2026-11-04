@@ -27,7 +27,7 @@ public sealed class StartupTests : IDisposable
         StartupHelper.SetEnabled(true, @"C:\Apps\Nax Translate\Nax-Translate.exe", Registry.CurrentUser, Run);
 
         using var key = Registry.CurrentUser.OpenSubKey(Run);
-        Assert.Equal("\"C:\\Apps\\Nax Translate\\Nax-Translate.exe\"", key?.GetValue("Nax-Translate"));
+        Assert.Equal("\"C:\\Apps\\Nax Translate\\Nax-Translate.exe\" --autostart", key?.GetValue("Nax-Translate"));
         Assert.True(StartupHelper.IsEnabled(Registry.CurrentUser, Run));
     }
 
@@ -69,7 +69,7 @@ public sealed class StartupTests : IDisposable
 
         using var run = Registry.CurrentUser.OpenSubKey(Run);
         Assert.Null(run?.GetValue("DeepL-Translator"));
-        Assert.Equal("\"C:\\Apps\\Nax-Translate.exe\"", run?.GetValue("Nax-Translate"));
+        Assert.Equal("\"C:\\Apps\\Nax-Translate.exe\" --autostart", run?.GetValue("Nax-Translate"));
     }
 
     [Fact]
@@ -82,7 +82,7 @@ public sealed class StartupTests : IDisposable
 
         using var run = Registry.CurrentUser.OpenSubKey(Run);
         Assert.Null(run?.GetValue("Nax-DeepL"));
-        Assert.Equal("\"C:\\Apps\\Nax-Translate.exe\"", run?.GetValue("Nax-Translate"));
+        Assert.Equal("\"C:\\Apps\\Nax-Translate.exe\" --autostart", run?.GetValue("Nax-Translate"));
     }
 
     [Fact]

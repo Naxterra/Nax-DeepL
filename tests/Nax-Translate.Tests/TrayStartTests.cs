@@ -33,6 +33,24 @@ public sealed class TrayStartTests : IDisposable
     }
 
     [Fact]
+    public void hidden_start_by_hand_shows_note_that_app_runs_in_tray()
+    {
+        Assert.True(App.ShouldNotifyTrayStart(startsHidden: true, []));
+    }
+
+    [Fact]
+    public void hidden_start_at_windows_sign_in_stays_quiet()
+    {
+        Assert.False(App.ShouldNotifyTrayStart(startsHidden: true, [StartupHelper.AutostartSwitch]));
+    }
+
+    [Fact]
+    public void start_with_window_shown_needs_no_tray_note()
+    {
+        Assert.False(App.ShouldNotifyTrayStart(startsHidden: false, []));
+    }
+
+    [Fact]
     public void start_in_tray_and_minimize_to_tray_are_on_by_default_and_kept_when_switched_off()
     {
         var cfg = Config.Load(ConfigPath);

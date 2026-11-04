@@ -136,7 +136,8 @@ begin
   Found := RegQueryStringValue(HKCU, RunKey, 'DeepL-Translator', Old) or Found;
   if Found then
   begin
-    RegWriteStringValue(HKCU, RunKey, '{#AppName}', '"' + ExpandConstant('{app}\{#AppExe}') + '"');
+    // --autostart matches StartupHelper.AutostartSwitch, so the start at sign-in stays quiet.
+    RegWriteStringValue(HKCU, RunKey, '{#AppName}', '"' + ExpandConstant('{app}\{#AppExe}') + '" --autostart');
     RegDeleteValue(HKCU, RunKey, '{#OldName}');
     RegDeleteValue(HKCU, RunKey, 'DeepL-Translator');
   end;

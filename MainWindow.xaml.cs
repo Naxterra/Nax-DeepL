@@ -139,10 +139,19 @@ public partial class MainWindow : Window
         // Runs once, whether the window was shown at start or only later.
         if (_startupChecksStarted) return;
         _startupChecksStarted = true;
-        await RefreshTokenAsync();
-        // With Claude picked and connected, check the Claude Code sign-in once, so the badge shows
-        // the plan and a missing sign-in is reported before the first translation.
-        if (_claude && _cfg.ClaudeConnected) await CheckClaudeAsync(quiet: true);
+        try
+        {
+            await RefreshTokenAsync();
+            // With Claude picked and connected, check the Claude Code sign-in once, so the badge
+            // shows the plan and a missing sign-in is reported before the first translation.
+            if (_claude && _cfg.ClaudeConnected) await CheckClaudeAsync(quiet: true);
+        }
+        catch (Exception ex)
+        {
+            // After a hidden start nobody awaits this task, so an error would otherwise vanish.
+            // The status line shows it, and the next translation or menu action tries again.
+            SetStatus(Loc.StatusError + ex.Message);
+        }
     }
 
     // Minimizing hides the window to the tray when that option is on, so it leaves the taskbar.

@@ -82,6 +82,8 @@ public static class Loc
     public static string MenuMinimizeToTray => En ? "Minimize to the tray"                  : "In den Infobereich minimieren";
     public static string TrayOpen         => En ? "Open"                                    : "Öffnen";
     public static string TrayExit         => En ? "Exit"                                    : "Beenden";
+    public static string TrayStartedHint  => En ? "Runs in the tray. Click here or the tray icon to open it, or press Ctrl+C+C to translate."
+                                                : "Läuft im Infobereich. Zum Öffnen hier oder auf das Symbol klicken, oder mit Strg+C+C übersetzen.";
 
     public static string StatusTranslated(string? lang, string engine, TimeSpan took)
     {
