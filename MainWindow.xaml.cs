@@ -564,7 +564,7 @@ public partial class MainWindow : Window
         catch (Exception) { SetStatus(Loc.StatusClipboardBusy); }
     }
 
-    void Verbindung_Click(object s, RoutedEventArgs e)
+    void Settings_Click(object s, RoutedEventArgs e)
     {
         // Update which auth items are visible before opening
         bool loggedIn = _token != null;
@@ -575,8 +575,8 @@ public partial class MainWindow : Window
         MenuItemClaudeConnect.Visibility    = claudeOn ? Visibility.Collapsed : Visibility.Visible;
         MenuItemClaudeDisconnect.Visibility = claudeOn ? Visibility.Visible   : Visibility.Collapsed;
 
-        var cm = VerbindungBtn.ContextMenu;
-        cm.PlacementTarget = VerbindungBtn;
+        var cm = SettingsBtn.ContextMenu;
+        cm.PlacementTarget = SettingsBtn;
         // Below the button with the right edges aligned, so the menu stays inside the window.
         // The 10 is the room the menu template leaves on its right for the shadow.
         cm.Placement = System.Windows.Controls.Primitives.PlacementMode.Custom;

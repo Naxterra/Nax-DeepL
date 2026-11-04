@@ -18,7 +18,7 @@ public static class Loc
     public static string AboutBlurb      => En ? "A fast translator for Windows that uses DeepL Pro or Claude and keeps working when the network changes."
                                                : "Ein schneller Übersetzer für Windows mit DeepL Pro oder Claude, der auch nach einem Netzwerkwechsel weiterarbeitet.";
     public static string AboutAuthor     => En ? "Author"                                  : "Autor";
-    public static string BtnConnect      => En ? "Connect"                                 : "Verbindung";
+    public static string BtnConnect      => En ? "Settings"                                : "Einstellungen";
     public static string MenuLogin        => En ? "Log in to DeepL"                         : "Bei DeepL anmelden";
     public static string MenuSwitch      => En ? "Switch DeepL account"                    : "DeepL-Konto wechseln";
     public static string MenuLogout      => En ? "Log out of DeepL"                        : "Von DeepL abmelden";
@@ -31,8 +31,8 @@ public static class Loc
             : (En ? "Connected to Claude." : "Mit Claude verbunden.");
     public static string StatusClaudeDisconnectedNow => En ? "Claude is disconnected. Nothing is sent to Claude until you connect it again."
                                                            : "Claude ist getrennt. Bis zur nächsten Verbindung wird nichts an Claude geschickt.";
-    public static string StatusClaudeDisconnected => En ? "Claude is disconnected. Click ⚙ Connect → Connect Claude."
-                                                        : "Claude ist getrennt. Bitte ⚙ Verbindung → Mit Claude verbinden.";
+    public static string StatusClaudeDisconnected => En ? "Claude is disconnected. Click ⚙ Settings → Connect Claude."
+                                                        : "Claude ist getrennt. Bitte ⚙ Einstellungen → Mit Claude verbinden.";
     public static string StatusClaudeNotSignedIn => En ? "Claude Code is not signed in. Run \"claude\" in a terminal once and sign in, then connect again."
                                                        : "Claude Code ist nicht angemeldet. Einmal „claude“ in einem Terminal starten und anmelden, dann erneut verbinden.";
     public static string BtnClear        => En ? "Clear"                                   : "Löschen";
@@ -44,7 +44,7 @@ public static class Loc
     public static string StatusLoggedIn  => En ? "Logged in."                              : "Angemeldet.";
     public static string StatusLoggedOut => En ? "Logged out."                             : "Abgemeldet.";
     public static string StatusCancelled => En ? "Login cancelled or failed."              : "Anmeldung abgebrochen oder fehlgeschlagen.";
-    public static string StatusNotAuth   => En ? "Not logged in to DeepL. Click ⚙ Connect." : "Nicht bei DeepL angemeldet. Bitte ⚙ Verbindung klicken.";
+    public static string StatusNotAuth   => En ? "Not logged in to DeepL. Click ⚙ Settings." : "Nicht bei DeepL angemeldet. Bitte ⚙ Einstellungen klicken.";
     public static string StatusCopied    => En ? "Copied."                                 : "Kopiert.";
     public static string StatusClipboardBusy => En ? "The clipboard is in use by another program. Please try again."
                                                    : "Die Zwischenablage wird von einem anderen Programm benutzt. Bitte noch einmal versuchen.";

@@ -15,7 +15,7 @@ Nax-Translate is a fast, lightweight Windows desktop translator that works with 
 - **Automatic target language:** when the text is already in the target language, German switches to English (US) and every other language switches to German.
 - **Classic, Next-gen or Claude:** a toggle in the title bar picks the DeepL model, or translates with Claude through your own Claude subscription instead of DeepL. The status line shows which engine translated and how long it took.
 - **Language swap:** one click flips source and target.
-- **System tray:** the app starts in the tray with its window hidden, minimizing and closing the window hide it to the tray, and one click on the tray icon opens it again. Starting the app a second time opens the window of the running one. Both "Im Infobereich starten" (start in the tray) and "In den Infobereich minimieren" (minimize to the tray) can be switched off in the ⚙ Verbindung menu.
+- **System tray:** the app starts in the tray with its window hidden, minimizing and closing the window hide it to the tray, and one click on the tray icon opens it again. Starting the app a second time opens the window of the running one. Both "Im Infobereich starten" (start in the tray) and "In den Infobereich minimieren" (minimize to the tray) can be switched off in the ⚙ Einstellungen menu.
 - **Start with Windows:** an optional entry starts the app when you sign in to Windows.
 - **German and English interface** with a dark theme.
 
@@ -30,7 +30,7 @@ Nax-Translate is a fast, lightweight Windows desktop translator that works with 
 
 With **Claude** picked in the title bar, the app sends the text to the installed Claude Code tool (`claude -p`) instead of DeepL. It needs no DeepL login and no API key, because it uses the subscription you are signed in with in Claude Code. An `ANTHROPIC_API_KEY` or similar variable in your environment is not passed on, so translations are never billed to an API key. Each translation counts against that subscription's usage limit. The translation appears when it is complete, the same way as with DeepL. While Claude is picked, the app keeps one Claude Code process started and waiting, so a translation does not wait for the tool to start. A waiting process sends nothing and uses no quota, but it takes about 200 MB of memory. Every process handles exactly one translation and then ends, so no translation sees an earlier text. The waiting process is ended when you pick DeepL again or quit the app. The app waits for a longer pause in typing before it sends, and it stops a request at once when newer text is typed.
 
-**⚙ Verbindung → Claude trennen** (Disconnect Claude) stops using Claude: nothing more is sent to it, a running request is stopped and the waiting process is ended. **Mit Claude verbinden** (Connect Claude) first checks that Claude Code is signed in and then starts using Claude again. The badge next to the app name shows the Claude plan while Claude is picked and connected, for example "Claude Max ✓". The choice is saved.
+**⚙ Einstellungen → Claude trennen** (Disconnect Claude) stops using Claude: nothing more is sent to it, a running request is stopped and the waiting process is ended. **Mit Claude verbinden** (Connect Claude) first checks that Claude Code is signed in and then starts using Claude again. The badge next to the app name shows the Claude plan while Claude is picked and connected, for example "Claude Max ✓". The choice is saved.
 
 While Claude is picked, a switch next to the target language sets the tone. **Natural** (the default) translates the way people in Germany would naturally say it and picks du or Sie to suit the text. **Formal** always uses Sie, and **Informal** always uses du. The choice is saved, and changing it translates the current text again.
 
@@ -40,7 +40,7 @@ Claude Code runs in safe mode for these requests, so your own hooks, plugins, CL
 
 1. Download `Nax-Translate-<version>-setup.exe` from the [latest release](https://github.com/Naxterra/Nax-Translate/releases/latest).
 2. Run it. It installs for your Windows user only, into `%LOCALAPPDATA%\Programs\Nax-Translate`, so no administrator rights are needed. It adds a Start menu entry and, if you choose, a desktop shortcut.
-3. Click **⚙ Verbindung → Anmelden** to sign in. This opens the DeepL login in your browser.
+3. Click **⚙ Einstellungen → Bei DeepL anmelden** to sign in. This opens the DeepL login in your browser.
 
 After the first login the session is saved, and later starts connect automatically.
 
@@ -58,8 +58,8 @@ An installed Nax-DeepL is updated in place: the setup moves the program to the n
 | Switch languages | Use the dropdowns or click ⇌ to swap. |
 | Copy result | Click **📋 Kopieren / Copy**. |
 | Switch engine | Use the Classic, Next-gen and Claude toggle in the title bar. |
-| Log out of DeepL or switch account | ⚙ Verbindung → Von DeepL abmelden |
-| Connect or disconnect Claude | ⚙ Verbindung → Mit Claude verbinden / Claude trennen |
+| Log out of DeepL or switch account | ⚙ Einstellungen → Von DeepL abmelden |
+| Connect or disconnect Claude | ⚙ Einstellungen → Mit Claude verbinden / Claude trennen |
 
 ## Building from source
 

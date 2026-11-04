@@ -64,12 +64,12 @@
             </Border>
 
             <!-- Connection button, always opens the menu -->
-            <Button x:Name="VerbindungBtn" Grid.Column="4" Style="{StaticResource StdBtn}"
-                    Padding="10,6" VerticalAlignment="Center" Click="Verbindung_Click">
+            <Button x:Name="SettingsBtn" Grid.Column="4" Style="{StaticResource StdBtn}"
+                    Padding="10,6" VerticalAlignment="Center" Click="Settings_Click">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="&#xE713;" FontFamily="{StaticResource IconFont}" FontSize="14"
                                VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock x:Name="ConnectLabel" Text="Verbindung" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="ConnectLabel" Text="Einstellungen" VerticalAlignment="Center"/>
                 </StackPanel>
                 <Button.ContextMenu>
                     <ContextMenu Style="{StaticResource FlyoutMenu}">
