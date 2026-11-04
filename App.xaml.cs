@@ -46,6 +46,12 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        // Draw without the graphics card. A window whose GPU surface is created while the screen is
+        // locked, the display is off or the driver is busy can stay black, because WPF only redraws
+        // when something changes and this window mostly sits still in the tray. The window is
+        // small, so software drawing costs nothing noticeable.
+        System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
+
         // If launched with a deepl:// callback URL, forward it to the running instance
         if (e.Args.Length > 0 && e.Args[0].StartsWith("deepl://", StringComparison.OrdinalIgnoreCase))
         {

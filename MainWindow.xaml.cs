@@ -107,6 +107,18 @@ public partial class MainWindow : Window
         Loaded          += OnLoaded;
         Closing         += OnClosing;
         StateChanged    += OnStateChanged;
+
+        // Repaint the whole window when it is shown again and after the screen was locked or the
+        // computer slept, so a surface lost in the meantime never leaves it black.
+        IsVisibleChanged += (_, _) => { if (IsVisible) ForceRedraw(); };
+        Microsoft.Win32.SystemEvents.SessionSwitch += (_, se) =>
+        {
+            if (se.Reason == Microsoft.Win32.SessionSwitchReason.SessionUnlock) Dispatcher.BeginInvoke(ForceRedraw);
+        };
+        Microsoft.Win32.SystemEvents.PowerModeChanged += (_, pe) =>
+        {
+            if (pe.Mode == Microsoft.Win32.PowerModes.Resume) Dispatcher.BeginInvoke(ForceRedraw);
+        };
         SizeChanged     += (_, _) => RememberGeometry();
         LocationChanged += (_, _) => RememberGeometry();
     }
@@ -746,6 +758,16 @@ public partial class MainWindow : Window
     }
 
     void SetStatus(string text) => StatusText.Text = text;
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    static extern bool InvalidateRect(IntPtr hwnd, IntPtr rect, bool erase);
+
+    /// <summary>Asks Windows to repaint the whole window, which makes WPF draw all of it again.</summary>
+    void ForceRedraw()
+    {
+        var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        if (hwnd != IntPtr.Zero) InvalidateRect(hwnd, IntPtr.Zero, true);
+    }
 
     // Messages about the DeepL login. While the Claude engine is picked they would only confuse,
     // because Claude needs no DeepL login.
