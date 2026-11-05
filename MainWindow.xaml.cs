@@ -374,15 +374,22 @@ public partial class MainWindow : Window
             ct.ThrowIfCancellationRequested();
 
             // The text is already in the target language, so switch the target the way the
-            // official app does and translate again. The dropdown shows the new target.
-            if (srcLang == "auto" && DeepLApi.AutoTarget(result.Detected, tgtLang) is { } newTgt)
+            // official app does and translate again. A fixed source that does not match the text
+            // is corrected to the detected language. The dropdowns show the new languages.
+            if (DeepLApi.AutoSwitch(srcLang, result.Detected, tgtLang) is { } sw)
             {
                 _autoSwitching = true;
-                try   { TgtCombo.SelectedItem = DeepLApi.TgtLangs.First(kv => kv.Value == newTgt).Key; }
+                try
+                {
+                    TgtCombo.SelectedItem = DeepLApi.TgtLangs.First(kv => kv.Value == sw.Tgt).Key;
+                    SrcCombo.SelectedItem = DeepLApi.SrcLangs.First(kv => kv.Value == sw.Src).Key;
+                }
                 finally { _autoSwitching = false; }
-                _cfg.TgtLang = newTgt;
+                _cfg.TgtLang = sw.Tgt;
+                _cfg.SrcLang = sw.Src;
                 _cfg.Save();
-                result = await Run(newTgt);
+                srcLang = sw.Src;
+                result = await Run(sw.Tgt);
                 ct.ThrowIfCancellationRequested();
             }
 

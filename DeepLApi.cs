@@ -146,6 +146,25 @@ public static class DeepLApi
     }
 
     /// <summary>
+    /// Decides whether the languages switch after a translation came back in the target language.
+    /// That happens with automatic detection, and also when a fixed source language does not match
+    /// the text, for example German text with "English" picked as the source. In that case the
+    /// source becomes the detected language, so the next request does not claim the wrong one.
+    /// Returns null when nothing switches.
+    /// </summary>
+    public static (string Src, string Tgt)? AutoSwitch(string srcLang, string? detectedLang, string tgtLang)
+    {
+        if (AutoTarget(detectedLang, tgtLang) is not { } newTgt) return null;
+        var detected = detectedLang!.Split('-')[0].ToLowerInvariant();
+        if (srcLang == "auto") return ("auto", newTgt);
+        // A fixed source that matches the text means the user really asked for the same language
+        // on both sides, so nothing is switched.
+        if (srcLang.Split('-')[0].Equals(detected, StringComparison.OrdinalIgnoreCase)) return null;
+        var newSrc = SrcLangs.ContainsValue(detected) ? detected : "auto";
+        return (newSrc, newTgt);
+    }
+
+    /// <summary>
     /// Returns the source and target codes after the swap button is pressed. With automatic
     /// detection the language DeepL detected takes the place of the source. When nothing was
     /// detected yet, or the old source is not a target language, the new target follows the
