@@ -41,7 +41,7 @@ public class Config
 
     [JsonPropertyName("src_lang")]  public string  SrcLang  { get; set; } = "auto";
     [JsonPropertyName("tgt_lang")]  public string  TgtLang  { get; set; } = "de";
-    // "classic" or "nextgen" for the two DeepL models, or "claude" for the Claude Code engine.
+    // "classic" or "nextgen" for DeepL, "claude", or "chatgpt".
     [JsonPropertyName("engine")]    public string  Engine   { get; set; } = "classic";
     // The model the Claude engine asks for, as an alias such as "sonnet" or "haiku".
     [JsonPropertyName("claude_model")] public string ClaudeModel { get; set; } = ClaudeCli.DefaultModel;
@@ -50,6 +50,10 @@ public class Config
     // Whether Claude is connected. While it is not, nothing is sent to Claude and no Claude Code
     // process is kept waiting.
     [JsonPropertyName("claude_connected")] public bool ClaudeConnected { get; set; } = true;
+    [JsonPropertyName("chatgpt_connected")] public bool ChatGptConnected { get; set; } = true;
+    // Empty uses the installed Codex CLI's default model.
+    [JsonPropertyName("chatgpt_model")] public string ChatGptModel { get; set; } = "";
+    [JsonPropertyName("chatgpt_tone")] public string ChatGptTone { get; set; } = ClaudeCli.ToneNatural;
     // Whether the app starts with its window hidden, showing only the tray icon.
     [JsonPropertyName("start_in_tray")]    public bool StartInTray     { get; set; } = true;
     // Whether minimizing the window hides it to the tray instead of the taskbar.

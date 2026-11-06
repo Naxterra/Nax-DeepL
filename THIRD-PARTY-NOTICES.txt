@@ -1,0 +1,14 @@
+Nax-Translate third-party notices
+
+Nax-Translate is distributed as a framework-dependent .NET application. Its publish
+output contains the application's own executable and assembly, configuration,
+license and this notice. No third-party NuGet runtime assemblies are bundled.
+
+The separately installed Microsoft .NET Desktop Runtime provides WPF, Windows Forms
+and .NET runtime libraries under their own licenses and notices. See:
+https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
+https://github.com/dotnet/wpf/blob/main/LICENSE.TXT
+https://github.com/dotnet/winforms/blob/main/LICENSE.TXT
+
+Claude Code and Codex CLI are separately installed tools, not bundled components.
+Their own licenses, service terms and subscription limits apply when they are used.

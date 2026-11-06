@@ -11,18 +11,25 @@ namespace NaxTranslate;
 public partial class MainWindow : Window
 {
     // ── State ──
-    readonly Config           _cfg  = Config.Load();
+    readonly Config           _cfg;
+    readonly ResilientHttp?   _http;
     readonly DispatcherTimer  _debounce;
     CancellationTokenSource   _cts  = new();
     string?                   _token;
     bool                      _nextGen;
     bool                      _claude;          // the Claude engine is picked instead of DeepL
+    bool                      _chatgpt;
+    bool                      _changingTone;
+    readonly IChatGptClient    _chatGpt;
+    readonly CancellationTokenSource _lifetime = new();
+    int                       _chatGptConnectionVersion;
     bool                      _busy;            // a translation is running right now
-    readonly ClaudeSession    _claudeSession = new();
+    readonly ClaudeSession    _claudeSession;
     string                    _lastSrc = "";
     string?                   _detected;        // language DeepL detected in the shown translation
     bool                      _failed;          // last translation could not reach DeepL
     bool                      _autoSwitching;   // the app itself is changing the target language
+    bool                      _stopped;
     readonly SemaphoreSlim    _refreshLock = new(1, 1);
 
     // ── Auto-refresh and offline-retry timers ──
@@ -30,8 +37,17 @@ public partial class MainWindow : Window
     readonly DispatcherTimer  _retry;
     static readonly TimeSpan  FirstRetryDelay = TimeSpan.FromSeconds(5);
 
-    public MainWindow()
+    public MainWindow() : this(Config.Load()) { }
+
+    // Separate settings and transports let window tests exercise the real event handlers
+    // without reading the user's login or contacting either translation service.
+    internal MainWindow(Config config, ResilientHttp? http = null, ClaudeSession? claudeSession = null,
+        IChatGptClient? chatGpt = null)
     {
+        _cfg = config;
+        _http = http;
+        _claudeSession = claudeSession ?? new();
+        _chatGpt = chatGpt ?? new ChatGptCli();
         InitializeComponent();
 
         // Timers must be created before setting combo selections (which fire events)
@@ -41,6 +57,7 @@ public partial class MainWindow : Window
         _refresh = new DispatcherTimer { Interval = TimeSpan.FromMinutes(15) };
         _refresh.Tick += async (_, _) =>
         {
+            if (_stopped) return;
             // Replaces a waiting Claude process once it is too old, so the next translation
             // still finds one ready instead of starting the tool then.
             if (_claude && _cfg.ClaudeConnected) _claudeSession.WarmUp(_cfg.ClaudeModel);
@@ -59,7 +76,7 @@ public partial class MainWindow : Window
             _retry.Interval = RetryBackoff.Next(_retry.Interval);
             _ = TranslateAsync();
         };
-        Net.Shared.Reset += () => Dispatcher.BeginInvoke(OnNetworkReset);
+        (_http ?? Net.Shared).Reset += OnConnectionsReset;
 
         // Restore UI language before populating combos (language names depend on it)
         Loc.SetLanguage(_cfg.UiLang);
@@ -80,12 +97,8 @@ public partial class MainWindow : Window
         TgtCombo.SelectedItem = DeepLApi.TgtLangs.Keys.FirstOrDefault(
             k => DeepLApi.TgtLangs[k] == _cfg.TgtLang, "Deutsch");
 
-        var tone = ClaudeCli.NormalizeTone(_cfg.ClaudeTone);
-        if      (tone == ClaudeCli.ToneFormal)   ToneFormalRb.IsChecked   = true;
-        else if (tone == ClaudeCli.ToneInformal) ToneInformalRb.IsChecked = true;
-        else                                     ToneNaturalRb.IsChecked  = true;
-
-        if      (_cfg.Engine == "claude")  ClaudeRb.IsChecked  = true;
+        if      (_cfg.Engine == "chatgpt") ChatGptRb.IsChecked = true;
+        else if (_cfg.Engine == "claude")  ClaudeRb.IsChecked  = true;
         else if (_cfg.Engine == "nextgen") NextgenRb.IsChecked = true;
         else                               ClassicRb.IsChecked = true;
 
@@ -111,14 +124,8 @@ public partial class MainWindow : Window
         // Repaint the whole window when it is shown again and after the screen was locked or the
         // computer slept, so a surface lost in the meantime never leaves it black.
         IsVisibleChanged += (_, _) => { if (IsVisible) ForceRedraw(); };
-        Microsoft.Win32.SystemEvents.SessionSwitch += (_, se) =>
-        {
-            if (se.Reason == Microsoft.Win32.SessionSwitchReason.SessionUnlock) Dispatcher.BeginInvoke(ForceRedraw);
-        };
-        Microsoft.Win32.SystemEvents.PowerModeChanged += (_, pe) =>
-        {
-            if (pe.Mode == Microsoft.Win32.PowerModes.Resume) Dispatcher.BeginInvoke(ForceRedraw);
-        };
+        Microsoft.Win32.SystemEvents.SessionSwitch += OnSessionSwitch;
+        Microsoft.Win32.SystemEvents.PowerModeChanged += OnPowerModeChanged;
         SizeChanged     += (_, _) => RememberGeometry();
         LocationChanged += (_, _) => RememberGeometry();
     }
@@ -149,14 +156,15 @@ public partial class MainWindow : Window
     async Task RunStartupChecksAsync()
     {
         // Runs once, whether the window was shown at start or only later.
-        if (_startupChecksStarted) return;
+        if (_stopped || _startupChecksStarted) return;
         _startupChecksStarted = true;
         try
         {
             await RefreshTokenAsync();
             // With Claude picked and connected, check the Claude Code sign-in once, so the badge
             // shows the plan and a missing sign-in is reported before the first translation.
-            if (_claude && _cfg.ClaudeConnected) await CheckClaudeAsync(quiet: true);
+            if (!_stopped && _claude && _cfg.ClaudeConnected) await CheckClaudeAsync(quiet: true);
+            if (!_stopped && _chatgpt && _cfg.ChatGptConnected) await CheckChatGptAsync(quiet: true);
         }
         catch (Exception ex)
         {
@@ -249,6 +257,51 @@ public partial class MainWindow : Window
         SetStatus(Loc.StatusClaudeDisconnectedNow);
     }
 
+    async Task<bool> CheckChatGptAsync(bool quiet, int? connectionVersion = null)
+    {
+        if (!quiet) SetStatus(Loc.StatusChatGptChecking);
+        try
+        {
+            var loggedIn = await _chatGpt.CheckAuthAsync(_lifetime.Token);
+            if (_stopped || connectionVersion.HasValue && connectionVersion != _chatGptConnectionVersion) return false;
+            _chatGptBadge = loggedIn ? "ChatGPT ✓" : "";
+            UpdateBadge();
+            if ((!quiet || _chatgpt) && (!quiet || _cfg.ChatGptConnected))
+                SetStatus(loggedIn ? Loc.StatusChatGptConnected : Loc.StatusChatGptNotSignedIn);
+            return loggedIn;
+        }
+        catch (OperationCanceledException) when (_stopped) { return false; }
+        catch (Exception ex)
+        {
+            if (_stopped || connectionVersion.HasValue && connectionVersion != _chatGptConnectionVersion) return false;
+            _chatGptBadge = "";
+            UpdateBadge();
+            if (!_stopped && (!quiet || _chatgpt))
+                SetStatus(ex is ChatGptNotFoundException ? Loc.StatusChatGptNotFound : Loc.StatusError + ex.Message);
+            return false;
+        }
+    }
+
+    async void ChatGptConnect_Click(object s, RoutedEventArgs e)
+    {
+        var version = ++_chatGptConnectionVersion;
+        if (!await CheckChatGptAsync(quiet: false, connectionVersion: version) || _stopped || version != _chatGptConnectionVersion) return;
+        _cfg.ChatGptConnected = true;
+        _cfg.Save();
+        UpdateBadge();
+        if (_chatgpt) { InvalidateTranslation(); _debounce.Stop(); _debounce.Start(); }
+    }
+
+    void ChatGptDisconnect_Click(object s, RoutedEventArgs e)
+    {
+        _chatGptConnectionVersion++;
+        _cfg.ChatGptConnected = false;
+        _cfg.Save();
+        if (_chatgpt) { InvalidateTranslation(); _debounce.Stop(); }
+        UpdateBadge();
+        SetStatus(Loc.StatusChatGptDisconnectedNow);
+    }
+
     /// <summary>
     /// Makes sure a usable access token is loaded. Never throws: when DeepL cannot be reached,
     /// the stored login is kept and the status shows that the app is offline.
@@ -306,16 +359,29 @@ public partial class MainWindow : Window
     {
         // Windows reports several changes while a network switch settles, so wait a moment
         // and then retry what failed, using fresh connections.
-        if (!_failed) return;
+        if (_stopped || !_failed) return;
         _retry.Stop();
         _retry.Interval = TimeSpan.FromSeconds(1.5);
         _retry.Start();
     }
 
+    void OnConnectionsReset() => Dispatcher.BeginInvoke(OnNetworkReset);
+
+    void OnSessionSwitch(object sender, Microsoft.Win32.SessionSwitchEventArgs e)
+    {
+        if (e.Reason == Microsoft.Win32.SessionSwitchReason.SessionUnlock) Dispatcher.BeginInvoke(ForceRedraw);
+    }
+
+    void OnPowerModeChanged(object sender, Microsoft.Win32.PowerModeChangedEventArgs e)
+    {
+        if (e.Mode == Microsoft.Win32.PowerModes.Resume) Dispatcher.BeginInvoke(ForceRedraw);
+    }
+
     // ──────────────────────────────── Translation ────────────────────────────────────
 
-    async Task TranslateAsync()
+    internal async Task TranslateAsync()
     {
+        if (_stopped) return;
         var src = SrcBox.Text.Trim();
         if (src.Length < 3) return;
         if (src.Length > DeepLApi.MaxChars)
@@ -336,8 +402,10 @@ public partial class MainWindow : Window
 
         // The engine is fixed for this whole translation, even if the toggle changes meanwhile.
         var claude = _claude;
-        var tone   = _cfg.ClaudeTone;
-        var engineName = claude ? "Claude" : "DeepL";
+        var chatgpt = _chatgpt;
+        var nextGen = _nextGen;
+        var tone   = chatgpt ? _cfg.ChatGptTone : _cfg.ClaudeTone;
+        var engineName = chatgpt ? "ChatGPT" : claude ? "Claude" : "DeepL";
 
         // While Claude is disconnected, nothing is sent to it. Clearing _lastSrc translates the
         // text as soon as Claude is connected again.
@@ -347,11 +415,19 @@ public partial class MainWindow : Window
             SetStatus(Loc.StatusClaudeDisconnected);
             return;
         }
+        if (chatgpt && !_cfg.ChatGptConnected)
+        {
+            _lastSrc = "";
+            SetStatus(Loc.StatusChatGptDisconnected);
+            return;
+        }
 
         // Claude's answer is shown when it is complete, like DeepL's, instead of word by word.
-        Task<(string Text, string? DetectedLang)> Run(string tgt) => claude
+        Task<(string Text, string? DetectedLang)> Run(string tgt) => chatgpt
+            ? _chatGpt.TranslateAsync(src, tgt, srcLang, _cfg.ChatGptModel, tone, ct)
+            : claude
             ? _claudeSession.TranslateAsync(src, tgt, srcLang, _cfg.ClaudeModel, tone: tone, ct: ct)
-            : DeepLApi.TranslateAsync(src, tgt, srcLang, _token, _nextGen, ct);
+            : DeepLApi.TranslateAsync(src, tgt, srcLang, _token, nextGen, ct, http: _http);
 
         SetStatus(Loc.StatusTranslating);
         var started = System.Diagnostics.Stopwatch.StartNew();
@@ -401,6 +477,13 @@ public partial class MainWindow : Window
             SetStatus(Loc.StatusTranslated(result.Detected, engineName, started.Elapsed));
         }
         catch (OperationCanceledException) { }
+        catch (ChatGptNotFoundException)
+        {
+            if (ct.IsCancellationRequested) return;
+            _failed = false;
+            _lastSrc = "";
+            SetStatus(Loc.StatusChatGptNotFound);
+        }
         catch (ClaudeLimitReachedException ex)
         {
             if (ct.IsCancellationRequested) return;
@@ -459,6 +542,16 @@ public partial class MainWindow : Window
     /// <summary>Stops everything that runs in the background, for when the app exits.</summary>
     public void StopBackgroundWork()
     {
+        if (_stopped) return;
+        _stopped = true;
+        _lifetime.Cancel();
+        _debounce.Stop();
+        _refresh.Stop();
+        _retry.Stop();
+        (_http ?? Net.Shared).Reset -= OnConnectionsReset;
+        Loc.Changed -= ApplyLocalization;
+        Microsoft.Win32.SystemEvents.SessionSwitch -= OnSessionSwitch;
+        Microsoft.Win32.SystemEvents.PowerModeChanged -= OnPowerModeChanged;
         CancelRunningTranslation();
         _claudeSession.Dispose();
     }
@@ -477,6 +570,17 @@ public partial class MainWindow : Window
         SetStatus(Loc.StatusReady);
     }
 
+    void InvalidateTranslation()
+    {
+        // The input or translation options changed. Cancel before waiting for the debounce,
+        // otherwise an old answer could be shown under the new options or switch them back.
+        CancelRunningTranslation();
+        _lastSrc = "";
+        _failed = false;
+        _retry.Stop();
+        _retry.Interval = FirstRetryDelay;
+    }
+
     // ──────────────────────────────── Event handlers ─────────────────────────────────
 
     void SrcBox_Changed(object s, TextChangedEventArgs e)
@@ -485,7 +589,7 @@ public partial class MainWindow : Window
         // The running translation is for text that no longer exists, so stop it right away
         // instead of when the next one starts. Otherwise its result could overwrite the box, and
         // it would never be stopped when the text gets too short to translate.
-        CancelRunningTranslation();
+        InvalidateTranslation();
         // Text over the limit still goes through the debounce, so TranslateAsync can say why
         // nothing is translated.
         _debounce.Stop();
@@ -506,40 +610,55 @@ public partial class MainWindow : Window
     {
         if (_autoSwitching) return;
         if (SrcCombo.SelectedItem is null || TgtCombo.SelectedItem is null) return;
+        InvalidateTranslation();
         _cfg.SrcLang = DeepLApi.SrcLangs[(string)SrcCombo.SelectedItem];
         _cfg.TgtLang = DeepLApi.TgtLangs[(string)TgtCombo.SelectedItem];
         _cfg.Save();
-        _lastSrc = "";   // force re-translate
         _debounce.Stop();
         _debounce.Start();
     }
 
     void Tone_Changed(object s, RoutedEventArgs e)
     {
-        _cfg.ClaudeTone = ToneFormalRb.IsChecked   == true ? ClaudeCli.ToneFormal
+        if (_changingTone) return;
+        var tone = ToneFormalRb.IsChecked   == true ? ClaudeCli.ToneFormal
                         : ToneInformalRb.IsChecked == true ? ClaudeCli.ToneInformal
                         :                                    ClaudeCli.ToneNatural;
+        if (_chatgpt) _cfg.ChatGptTone = tone;
+        else _cfg.ClaudeTone = tone;
         _cfg.Save();
-        if (!_claude) return;
-        _lastSrc = "";   // translate the same text again in the new tone
+        if (!_claude && !_chatgpt) return;
+        InvalidateTranslation();
         _debounce.Stop();
         _debounce.Start();
     }
 
     void Engine_Changed(object s, RoutedEventArgs e)
     {
+        InvalidateTranslation();
         _nextGen       = NextgenRb.IsChecked == true;
         _claude        = ClaudeRb.IsChecked  == true;
-        _cfg.Engine    = _claude ? "claude" : _nextGen ? "nextgen" : "classic";
+        _chatgpt       = ChatGptRb.IsChecked == true;
+        _cfg.Engine    = _chatgpt ? "chatgpt" : _claude ? "claude" : _nextGen ? "nextgen" : "classic";
         _cfg.Save();
-        // Every Claude run takes a few seconds and counts against the subscription's usage
+        // Every subscription-model request takes time and counts against its usage
         // limit, so wait for a longer pause in typing before sending.
-        _debounce.Interval = TimeSpan.FromMilliseconds(_claude ? 1500 : 800);
+        _debounce.Interval = TimeSpan.FromMilliseconds(_claude || _chatgpt ? 1500 : 800);
         UpdateBadge();
-        // The tone only applies to Claude, so the switch is hidden for DeepL.
-        TonePanel.Visibility = _claude ? Visibility.Visible : Visibility.Collapsed;
+        // Each subscription engine remembers its own tone. DeepL hides the tone switch.
+        TonePanel.Visibility = _claude || _chatgpt ? Visibility.Visible : Visibility.Collapsed;
+        _changingTone = true;
+        try
+        {
+            var tone = ClaudeCli.NormalizeTone(_chatgpt ? _cfg.ChatGptTone : _cfg.ClaudeTone);
+            ToneFormalRb.IsChecked = tone == ClaudeCli.ToneFormal;
+            ToneInformalRb.IsChecked = tone == ClaudeCli.ToneInformal;
+            ToneNaturalRb.IsChecked = tone == ClaudeCli.ToneNatural;
+        }
+        finally { _changingTone = false; }
         if (IsLoaded)
-            SetStatus(_claude ? (_cfg.ClaudeConnected ? Loc.StatusReady : Loc.StatusClaudeDisconnected)
+            SetStatus(_chatgpt ? (_cfg.ChatGptConnected ? Loc.StatusReady : Loc.StatusChatGptDisconnected)
+                              : _claude ? (_cfg.ClaudeConnected ? Loc.StatusReady : Loc.StatusClaudeDisconnected)
                               : (_token != null ? Loc.StatusReady : Loc.StatusNotAuth));
         // Start Claude Code ahead of time, so the first translation does not wait for it. With
         // DeepL picked, or Claude disconnected, no Claude process is kept around.
@@ -548,7 +667,8 @@ public partial class MainWindow : Window
         // The first switch to Claude after start checks the sign-in, so the badge shows the plan.
         if (IsLoaded && _claude && _cfg.ClaudeConnected && _claudeBadge.Length == 0)
             _ = CheckClaudeAsync(quiet: true);
-        _lastSrc       = "";
+        if (IsLoaded && _chatgpt && _cfg.ChatGptConnected && _chatGptBadge.Length == 0)
+            _ = CheckChatGptAsync(quiet: true);
         _debounce.Stop();
         _debounce.Start();
     }
@@ -593,6 +713,8 @@ public partial class MainWindow : Window
         var claudeOn = _cfg.ClaudeConnected;
         MenuItemClaudeConnect.Visibility    = claudeOn ? Visibility.Collapsed : Visibility.Visible;
         MenuItemClaudeDisconnect.Visibility = claudeOn ? Visibility.Visible   : Visibility.Collapsed;
+        MenuItemChatGptConnect.Visibility = _cfg.ChatGptConnected ? Visibility.Collapsed : Visibility.Visible;
+        MenuItemChatGptDisconnect.Visibility = _cfg.ChatGptConnected ? Visibility.Visible : Visibility.Collapsed;
 
         var cm = SettingsBtn.ContextMenu;
         cm.PlacementTarget = SettingsBtn;
@@ -713,6 +835,7 @@ public partial class MainWindow : Window
 
     void OnClosing(object? s, System.ComponentModel.CancelEventArgs e)
     {
+        if (_stopped) return;
         e.Cancel = true;
         SaveSettings();
         Hide();
@@ -731,6 +854,8 @@ public partial class MainWindow : Window
         MenuItemLogout.Header   = Loc.MenuLogout;
         MenuItemClaudeConnect.Header    = Loc.MenuClaudeConnect;
         MenuItemClaudeDisconnect.Header = Loc.MenuClaudeDisconnect;
+        MenuItemChatGptConnect.Header = Loc.MenuChatGptConnect;
+        MenuItemChatGptDisconnect.Header = Loc.MenuChatGptDisconnect;
         MenuItemStartup.Header  = Loc.MenuStartup;
         MenuItemStartInTray.Header    = Loc.MenuStartInTray;
         MenuItemMinimizeToTray.Header = Loc.MenuMinimizeToTray;
@@ -750,6 +875,7 @@ public partial class MainWindow : Window
     // similar for a connected Claude.
     string _deeplBadge  = "";
     string _claudeBadge = "";
+    string _chatGptBadge = "";
 
     void SetBadge(string text)
     {
@@ -759,7 +885,8 @@ public partial class MainWindow : Window
 
     void UpdateBadge()
     {
-        var text = _claude ? (_cfg.ClaudeConnected ? _claudeBadge : "") : _deeplBadge;
+        var text = _chatgpt ? (_cfg.ChatGptConnected ? _chatGptBadge : "")
+                 : _claude ? (_cfg.ClaudeConnected ? _claudeBadge : "") : _deeplBadge;
         Badge.Text           = text;
         BadgePill.Visibility = text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
@@ -780,7 +907,7 @@ public partial class MainWindow : Window
     // because Claude needs no DeepL login.
     void SetAuthStatus(string text)
     {
-        if (_claude) { if (StatusText.Text == Loc.StatusChecking) SetStatus(Loc.StatusReady); return; }
+        if (_claude || _chatgpt) { if (StatusText.Text == Loc.StatusChecking) SetStatus(Loc.StatusReady); return; }
         SetStatus(text);
     }
 

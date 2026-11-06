@@ -13,6 +13,25 @@ public sealed class ConfigTests : IDisposable
     }
 
     [Fact]
+    public void chatgpt_engine_connection_model_and_tone_survive_restart()
+    {
+        var cfg = Config.Load(ConfigPath);
+        Assert.True(cfg.ChatGptConnected);
+        cfg.Engine = "chatgpt";
+        cfg.ChatGptConnected = false;
+        cfg.ChatGptModel = "example-model";
+        cfg.ChatGptTone = "formal";
+        cfg.ClaudeTone = "informal";
+        cfg.Save();
+        var loaded = Config.Load(ConfigPath);
+        Assert.Equal("chatgpt", loaded.Engine);
+        Assert.False(loaded.ChatGptConnected);
+        Assert.Equal("example-model", loaded.ChatGptModel);
+        Assert.Equal("formal", loaded.ChatGptTone);
+        Assert.Equal("informal", loaded.ClaudeTone);
+    }
+
+    [Fact]
     public void claude_disconnected_stays_disconnected_after_restart()
     {
         Assert.True(Config.Load(ConfigPath).ClaudeConnected, "Claude starts connected by default");

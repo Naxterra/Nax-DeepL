@@ -441,6 +441,10 @@ public sealed class ClaudeSession(ClaudeProcessFactory? factory = null) : IDispo
         }
         finally
         {
+            // On the window's dispatcher, a cancelled read can finish this method inline
+            // before cancellation reaches the older Kill registration. Do not remove that
+            // registration and leave the process alive: cancellation must always kill it.
+            if (timeout.IsCancellationRequested) proc.Kill();
             stop.Dispose();
             proc.Dispose();
         }

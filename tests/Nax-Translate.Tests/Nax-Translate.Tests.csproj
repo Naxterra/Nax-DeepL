@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Nax-Translate.csproj" />
+    <EmbeddedResource Include="..\..\App.xaml" Link="AppResources.xaml" />
   </ItemGroup>
 
 </Project>

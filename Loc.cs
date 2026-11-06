@@ -15,8 +15,8 @@ public static class Loc
     static bool En => Current == "en";
 
     public static string AppTitle        => "Nax-Translate";
-    public static string AboutBlurb      => En ? "A fast translator for Windows that uses DeepL Pro or Claude and keeps working when the network changes."
-                                               : "Ein schneller Übersetzer für Windows mit DeepL Pro oder Claude, der auch nach einem Netzwerkwechsel weiterarbeitet.";
+    public static string AboutBlurb      => En ? "A fast translator for Windows with DeepL Pro, Claude and ChatGPT."
+                                               : "Ein schneller Übersetzer für Windows mit DeepL Pro, Claude und ChatGPT.";
     public static string AboutAuthor     => En ? "Author"                                  : "Autor";
     public static string BtnConnect      => En ? "Settings"                                : "Einstellungen";
     public static string MenuLogin        => En ? "Log in to DeepL"                         : "Bei DeepL anmelden";
@@ -24,6 +24,18 @@ public static class Loc
     public static string MenuLogout      => En ? "Log out of DeepL"                        : "Von DeepL abmelden";
     public static string MenuClaudeConnect    => En ? "Connect Claude"                     : "Mit Claude verbinden";
     public static string MenuClaudeDisconnect => En ? "Disconnect Claude"                  : "Claude trennen";
+    public static string MenuChatGptConnect => En ? "Connect ChatGPT" : "Mit ChatGPT verbinden";
+    public static string MenuChatGptDisconnect => En ? "Disconnect ChatGPT" : "ChatGPT trennen";
+    public static string StatusChatGptChecking => En ? "Checking the ChatGPT sign-in…" : "ChatGPT-Anmeldung wird geprüft…";
+    public static string StatusChatGptConnected => En ? "Connected to ChatGPT." : "Mit ChatGPT verbunden.";
+    public static string StatusChatGptDisconnectedNow => En ? "ChatGPT is disconnected. No text is sent until you connect it again." : "ChatGPT ist getrennt. Bis zur nächsten Verbindung wird kein Text verschickt.";
+    public static string StatusChatGptDisconnected => En ? "ChatGPT is disconnected. Click ⚙ Settings → Connect ChatGPT." : "ChatGPT ist getrennt. Bitte ⚙ Einstellungen → Mit ChatGPT verbinden.";
+    public static string StatusChatGptNotSignedIn => En ? "Sign in to the Codex CLI with ChatGPT using \"codex login\", then connect again. API-key sign-ins are not used." : "Mit „codex login“ bei ChatGPT anmelden, dann erneut verbinden. API-Schlüssel werden nicht verwendet.";
+    public static string StatusChatGptNotFound => En ? "Install the Codex CLI or Codex desktop app, sign in with ChatGPT, then connect again." : "Codex CLI oder Codex-App installieren, mit ChatGPT anmelden und erneut verbinden.";
+    public static string StatusChatGptAuthTimeout => En ? "ChatGPT sign-in check timed out." : "Zeitüberschreitung bei der ChatGPT-Anmeldeprüfung.";
+    public static string StatusChatGptTimeout => En ? "ChatGPT translation timed out. Please try again." : "Zeitüberschreitung bei der ChatGPT-Übersetzung. Bitte erneut versuchen.";
+    public static string StatusChatGptFailed => En ? "ChatGPT could not complete the translation. Check your sign-in and usage limit, then try again." : "ChatGPT konnte die Übersetzung nicht abschließen. Anmeldung und Nutzungslimit prüfen und erneut versuchen.";
+    public static string StatusChatGptUnexpectedTool => En ? "ChatGPT tried to use a tool. The translation was rejected." : "ChatGPT wollte ein Werkzeug verwenden. Die Übersetzung wurde verworfen.";
     public static string StatusClaudeChecking => En ? "Checking the Claude Code sign-in…" : "Anmeldung bei Claude Code wird geprüft…";
     public static string StatusClaudeConnected(string? plan) =>
         plan != null
@@ -69,12 +81,10 @@ public static class Loc
     public static string ToneNatural      => En ? "Natural"                                 : "Natürlich";
     public static string ToneFormal       => En ? "Formal"                                  : "Sie";
     public static string ToneInformal     => En ? "Informal"                                : "Du";
-    public static string ToneNaturalTip   => En ? "Claude translates the way people in Germany would naturally say it, and picks du or Sie to suit the text."
-                                                : "Claude übersetzt so, wie man es in Deutschland natürlich sagen würde, und wählt du oder Sie passend zum Text.";
-    public static string ToneFormalTip    => En ? "Claude uses the formal form of address (Sie)."
-                                                : "Claude verwendet die förmliche Anrede (Sie).";
-    public static string ToneInformalTip  => En ? "Claude uses the informal form of address (du)."
-                                                : "Claude verwendet die vertraute Anrede (du).";
+    public static string ToneNaturalTip   => En ? "Translates naturally and picks du or Sie to suit the text."
+                                                : "Übersetzt natürlich und wählt du oder Sie passend zum Text.";
+    public static string ToneFormalTip    => En ? "Uses the formal form of address (Sie)." : "Verwendet die förmliche Anrede (Sie).";
+    public static string ToneInformalTip  => En ? "Uses the informal form of address (du)." : "Verwendet die vertraute Anrede (du).";
 
     public static string MenuStartup      => En ? "Start with Windows"                      : "Mit Windows starten";
     public static string MenuAbout        => En ? "About"                                   : "Über";

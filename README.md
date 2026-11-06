@@ -1,6 +1,6 @@
 # Nax-Translate
 
-Nax-Translate is a fast, lightweight Windows desktop translator that works with your **DeepL Pro** subscription or your **Claude** subscription. It was called Nax-DeepL before version 1.2.0. It starts quickly, stays small in the tray and keeps working when your network changes.
+Nax-Translate is a fast, lightweight Windows desktop translator that works with your **DeepL Pro**, **Claude** or **ChatGPT** subscription. It was called Nax-DeepL before version 1.2.0. It starts quickly, stays small in the tray and keeps working when your network changes.
 
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-blue)
 ![.NET](https://img.shields.io/badge/.NET-11-purple)
@@ -13,7 +13,7 @@ Nax-Translate is a fast, lightweight Windows desktop translator that works with 
 - **Survives network switches:** when Windows switches networks (Wi-Fi, LAN or VPN), the app drops its old connections and retries on the new network instead of going blank.
 - **Login once:** you sign in with your DeepL Pro account in the browser. The session is renewed automatically and stored encrypted for your Windows user.
 - **Automatic target language:** when the text is already in the target language, German switches to English (US) and every other language switches to German.
-- **Classic, Next-gen or Claude:** a toggle in the title bar picks the DeepL model, or translates with Claude through your own Claude subscription instead of DeepL. The status line shows which engine translated and how long it took.
+- **Classic, Next-gen, Claude or ChatGPT:** the engine switch picks the DeepL model, or translates through your signed-in Claude or ChatGPT subscription. The status line shows which engine translated and how long it took.
 - **Language swap:** one click flips source and target.
 - **System tray:** the app starts in the tray with its window hidden, minimizing and closing the window hide it to the tray, and one click on the tray icon opens it again. Starting the app a second time opens the window of the running one. Both "Im Infobereich starten" (start in the tray) and "In den Infobereich minimieren" (minimize to the tray) can be switched off in the ⚙ Einstellungen menu.
 - **Start with Windows:** an optional entry starts the app when you sign in to Windows.
@@ -25,6 +25,7 @@ Nax-Translate is a fast, lightweight Windows desktop translator that works with 
 - [.NET 11 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/11.0) (x64)
 - An active **DeepL Pro** subscription for the Classic and Next-gen engines
 - For the Claude engine: [Claude Code](https://claude.com/claude-code) installed (`winget install Anthropic.ClaudeCode`) and signed in once by running `claude`
+- For the ChatGPT engine: the [Codex CLI](https://developers.openai.com/codex/cli) or Codex desktop app installed, and the CLI signed in with ChatGPT (`codex login`). API-key sign-ins are not used.
 
 ## The Claude engine
 
@@ -35,6 +36,14 @@ With **Claude** picked in the title bar, the app sends the text to the installed
 While Claude is picked, a switch next to the target language sets the tone. **Natural** (the default) translates the way people in Germany would naturally say it and picks du or Sie to suit the text. **Formal** always uses Sie, and **Informal** always uses du. The choice is saved, and changing it translates the current text again.
 
 Claude Code runs in safe mode for these requests, so your own hooks, plugins, CLAUDE.md files and MCP servers are not loaded, no tools are offered and no session is saved. The model is Sonnet by default. To use another one, set `"claude_model"` in `%APPDATA%\Nax-Translate\config.json` to an alias such as `"haiku"`.
+
+## The ChatGPT engine
+
+Pick **ChatGPT** in the engine switch to translate through the installed Codex CLI and its cached ChatGPT sign-in. The app first checks `codex login status` and requires a ChatGPT sign-in. It removes API-key and endpoint overrides from the child environment and forces the OpenAI provider with ChatGPT authentication. Translations count toward your plan's Codex usage limits; no separate API key is needed.
+
+Each translation starts a fresh, ephemeral CLI request in its own temporary folder. The app ignores user configuration and rules, disables hooks, plugins, connected apps, command execution, browsing and project instructions, and uses a read-only sandbox. No reusable conversation or waiting process is kept. The full answer appears only after the CLI reports successful completion. Changing text, language, tone or engine cancels the old process immediately. Failed or incomplete answers are never displayed as a finished translation, and requests are not automatically retried.
+
+**⚙ Einstellungen → ChatGPT trennen** stops the current ChatGPT request and blocks further sends. **Mit ChatGPT verbinden** checks the existing CLI sign-in and reconnects; it does not sign you out of Codex or change your account. The connected choice and the **Natürlich | Sie | Du** tone are saved independently from Claude. To select a model, set `"chatgpt_model"` in the app's settings file; an empty value uses the installed CLI's default. The translation limit is 5000 characters.
 
 ## Installation
 
@@ -57,9 +66,10 @@ An installed Nax-DeepL is updated in place: the setup moves the program to the n
 | Translate clipboard | Press `Ctrl+C+C` anywhere on the system. |
 | Switch languages | Use the dropdowns or click ⇌ to swap. |
 | Copy result | Click **📋 Kopieren / Copy**. |
-| Switch engine | Use the Classic, Next-gen and Claude toggle in the title bar. |
+| Switch engine | Use the Classic, Next-gen, Claude and ChatGPT switch. |
 | Log out of DeepL or switch account | ⚙ Einstellungen → Von DeepL abmelden |
 | Connect or disconnect Claude | ⚙ Einstellungen → Mit Claude verbinden / Claude trennen |
+| Connect or disconnect ChatGPT | ⚙ Einstellungen → Mit ChatGPT verbinden / ChatGPT trennen |
 
 ## Building from source
 

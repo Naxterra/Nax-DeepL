@@ -9,7 +9,7 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="56"/>   <!-- header -->
+            <RowDefinition Height="Auto"/> <!-- header -->
             <RowDefinition Height="Auto"/> <!-- lang selectors -->
             <RowDefinition Height="*"/>    <!-- text cards -->
             <RowDefinition Height="32"/>   <!-- status line -->
@@ -17,6 +17,10 @@
 
         <!-- ═══ Header ═══ -->
         <Grid Grid.Row="0" Margin="20,0,16,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="56"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
@@ -52,13 +56,16 @@
             </Border>
 
             <!-- Engine -->
-            <Border Grid.Column="3" Style="{StaticResource SegGroup}" Margin="0,0,8,0">
+            <Border Grid.Row="1" Grid.ColumnSpan="5" HorizontalAlignment="Left"
+                    Style="{StaticResource SegGroup}" Margin="0,0,0,10">
                 <StackPanel Orientation="Horizontal">
                     <RadioButton x:Name="ClassicRb" Content="Classic" Style="{StaticResource SegBtn}"
                                  Checked="Engine_Changed"/>
                     <RadioButton x:Name="NextgenRb" Content="Next-gen" Style="{StaticResource SegBtn}"
                                  Checked="Engine_Changed"/>
                     <RadioButton x:Name="ClaudeRb" Content="Claude" Style="{StaticResource SegBtn}"
+                                 Checked="Engine_Changed"/>
+                    <RadioButton x:Name="ChatGptRb" Content="ChatGPT" Style="{StaticResource SegBtn}"
                                  Checked="Engine_Changed"/>
                 </StackPanel>
             </Border>
@@ -79,6 +86,8 @@
                         <Separator/>
                         <MenuItem x:Name="MenuItemClaudeConnect"    Header="Mit Claude verbinden" Click="ClaudeConnect_Click"/>
                         <MenuItem x:Name="MenuItemClaudeDisconnect" Header="Claude trennen"       Click="ClaudeDisconnect_Click"/>
+                        <MenuItem x:Name="MenuItemChatGptConnect" Header="Mit ChatGPT verbinden" Click="ChatGptConnect_Click"/>
+                        <MenuItem x:Name="MenuItemChatGptDisconnect" Header="ChatGPT trennen" Click="ChatGptDisconnect_Click"/>
                         <Separator/>
                         <MenuItem x:Name="MenuItemStartup" Header="Mit Windows starten"
                                   IsCheckable="True" Click="Startup_Click"/>
@@ -109,7 +118,7 @@
 
             <ComboBox x:Name="TgtCombo" Grid.Column="2" SelectionChanged="Lang_Changed"/>
 
-            <!-- Tone of Claude translations, shown only while Claude is picked -->
+            <!-- Tone for Claude and ChatGPT translations -->
             <Border x:Name="TonePanel" Grid.Column="3" Style="{StaticResource SegGroup}" Margin="8,0,0,0"
                     VerticalAlignment="Center" Visibility="Collapsed">
                 <StackPanel Orientation="Horizontal">

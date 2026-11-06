@@ -11,8 +11,8 @@
     <RootNamespace>NaxTranslate</RootNamespace>
     <AssemblyName>Nax-Translate</AssemblyName>
     <Product>Nax-Translate</Product>
-    <Description>Desktop translator for Windows with DeepL Pro and Claude</Description>
-    <Version>1.2.0</Version>
+    <Description>Desktop translator for Windows with DeepL Pro, Claude and ChatGPT</Description>
+    <Version>1.3.0</Version>
     <Optimize>true</Optimize>
   </PropertyGroup>
 
@@ -34,6 +34,8 @@
   <ItemGroup>
     <Resource Include="icon.ico" />
     <Resource Include="logo.png" />
+    <Content Include="LICENSE" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="THIRD-PARTY-NOTICES.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
