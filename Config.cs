@@ -51,8 +51,8 @@ public class Config
     // process is kept waiting.
     [JsonPropertyName("claude_connected")] public bool ClaudeConnected { get; set; } = true;
     [JsonPropertyName("chatgpt_connected")] public bool ChatGptConnected { get; set; } = true;
-    // Empty uses the installed Codex CLI's default model.
-    [JsonPropertyName("chatgpt_model")] public string ChatGptModel { get; set; } = "";
+    // Pin a translation model rather than inheriting the coding CLI's changing default.
+    [JsonPropertyName("chatgpt_model")] public string ChatGptModel { get; set; } = ChatGptCli.DefaultModel;
     [JsonPropertyName("chatgpt_tone")] public string ChatGptTone { get; set; } = ClaudeCli.ToneNatural;
     // Whether the app starts with its window hidden, showing only the tray icon.
     [JsonPropertyName("start_in_tray")]    public bool StartInTray     { get; set; } = true;
@@ -74,6 +74,7 @@ public class Config
         }
         catch { cfg = new(); }
         cfg.FilePath = path;
+        cfg.ChatGptModel = ChatGptCli.NormalizeModel(cfg.ChatGptModel);
 
         cfg.DlAccess     = Unprotect(cfg.DlAccessProtected);
         cfg.RefreshToken = Unprotect(cfg.RefreshTokenProtected);

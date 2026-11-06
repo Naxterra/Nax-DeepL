@@ -43,7 +43,9 @@ Pick **ChatGPT** in the engine switch to translate through the installed Codex C
 
 Each translation starts a fresh, ephemeral CLI request in its own temporary folder. The app ignores user configuration and rules, disables hooks, plugins, connected apps, command execution, browsing and project instructions, and uses a read-only sandbox. No reusable conversation or waiting process is kept. The full answer appears only after the CLI reports successful completion. Changing text, language, tone or engine cancels the old process immediately. Failed or incomplete answers are never displayed as a finished translation, and requests are not automatically retried.
 
-**⚙ Einstellungen → ChatGPT trennen** stops the current ChatGPT request and blocks further sends. **Mit ChatGPT verbinden** checks the existing CLI sign-in and reconnects; it does not sign you out of Codex or change your account. The connected choice and the **Natürlich | Sie | Du** tone are saved independently from Claude. To select a model, set `"chatgpt_model"` in the app's settings file; an empty value uses the installed CLI's default. The translation limit is 5000 characters.
+**⚙ Einstellungen → ChatGPT trennen** stops the current ChatGPT request and blocks further sends. **Mit ChatGPT verbinden** checks the existing CLI sign-in and reconnects; it does not sign you out of Codex or change your account. The connected choice and the **Natürlich | Sie | Du** tone are saved independently from Claude. ChatGPT translations use **GPT-6 Luna with low reasoning** by default. To select another model, set `"chatgpt_model"` in the app's settings file; missing or empty values use Luna, while an explicit model is preserved. The translation limit is 5000 characters.
+
+The translation instructions require the model to preserve facts, negations, uncertainty, attribution, names and quantities, and to avoid adding explanations or correcting the source. Natural wording may change sentence structure without changing the meaning. These instructions reduce unwanted rewriting; they cannot guarantee that every translation is accurate.
 
 ## Installation
 
